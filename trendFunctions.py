@@ -5,7 +5,7 @@ from datetime import timedelta
 import pandas as pd
 import numpy as np
 import plotly
-from plotly.graph_objs import Layout, Scatter, Line, Ohlc, Figure, Histogram, Bar
+from plotly.graph_objs import Layout, Scatter, Line, Ohlc, Figure, Histogram, Bar, Table
 import plotly.figure_factory as ff
 import scipy as sp
 import time
@@ -76,7 +76,6 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
-
 def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     if not (
             (topsAndBottoms.iloc[counter].trendUp == trendUp) and
@@ -93,71 +92,314 @@ def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     return diff.days, counter - 2
 
 
-def trendProjector(topsAndBottoms):
-    # print(topsAndBottoms)
+def trendProjector(topsAndBottoms, todaysDate):
+    # 1. have a 3d list of tops, bottoms and projections
+    # 2. have 2 charts. 1 to project tops, another one to project bottoms.
 
-    # diff = topsAndBottoms.iloc[-1].date - topsAndBottoms.iloc[-2].date
-    # print(diff.days)
-    # print(topsAndBottoms.iloc[-2].date + timedelta(days=diff.days))
-    # print(topsAndBottoms.iloc[-2].date + timedelta(days=diff.days*2))
-    # exit()
+    topsAndBottoms = topsAndBottoms.reset_index(drop=True)
 
-    currentTrendUp = topsAndBottoms.iloc[-1].trendUp
-    currentTopOrBottom = topsAndBottoms.iloc[-1].top
-    currentDate = topsAndBottoms.iloc[-1].date
+    HH_days = set()
+    HL_days = set()
+    LL_days = set()
+    LH_days = set()
 
-    projectionLimit = 365 * 2  # days
+    HH_projs = {}
+    HL_projs = {}
+    LL_projs = {}
+    LH_projs = {}
 
-    timeDiffs = []
-    counter = -1
-    while True:
-        diffInDays, counter = check3Points(counter, topsAndBottoms, currentTrendUp, currentTopOrBottom)
+    HHstart,HHend,HHdiff = [],[],[]
+    HLstart, HLend, HLdiff = [], [], []
+    LLstart, LLend, LLdiff = [], [], []
+    LHstart, LHend, LHdiff = [], [], []
 
-        if (diffInDays == False):
-            if len(timeDiffs) > 1:
-                break
-        else:
-            timeDiffs.append(diffInDays)
+    totalLength = len(topsAndBottoms)
 
-    print(timeDiffs)
+    for index,row in topsAndBottoms.iterrows():
+        if row.top:
+            #calculate projections
+            projectionList = []
+            for projDays in HH_days:
+                projection = row.date + timedelta(days=projDays)
+                if projection >= todaysDate:
+                    projectionList.append(projection)
+            if projectionList != []: HH_projs[row.date] = projectionList
 
-    dates = []
+            projectionList = []
+            for projDays in HL_days:
+                projection = row.date + timedelta(days=projDays)
+                if projection >= todaysDate:
+                    projectionList.append(projection)
+            if projectionList != []: HL_projs[row.date] = projectionList
 
-    for diffInDays in timeDiffs:
-        multiplier = 1
-        nextDate = currentDate + timedelta(days=diffInDays * multiplier)
-        while (nextDate - currentDate).days <= projectionLimit:
-            dates.append(nextDate)
-            multiplier += 1
-            nextDate = currentDate + timedelta(days=diffInDays * multiplier)
+            #gather new data
+            if (index+1) < totalLength:
+                diff = topsAndBottoms.iloc[index + 1].date - row.date
+                HL_days.add(diff.days)
 
-    # print(len(dates)dates)
+                HLstart.append(row.date)
+                HLend.append(topsAndBottoms.iloc[index + 1].date)
+                HLdiff.append(diff.days)
 
-    cycles = pd.DataFrame(dates, columns=['date'])
-    # print(cycles)
-    cycles = cycles['date'].value_counts()
-    # print(cycles.size)
-    cycles = pd.DataFrame(cycles)
-    # print()
-    # exit()
+            if (index+2) < totalLength:
+                diff = topsAndBottoms.iloc[index+2].date - row.date
+                HH_days.add(diff.days)
 
-    # print(cycles.index)
+                HHstart.append(row.date)
+                HHend.append(topsAndBottoms.iloc[index + 2].date)
+                HHdiff.append(diff.days)
 
-    trendText = 'Trend Up'
-    topBottomText = 'Top to Top'
-    if not currentTrendUp: trendText = 'Trend Down'
-    if not currentTopOrBottom: topBottomText = 'Bottom to Bottom'
 
-    cyclesTrace = Bar(x=cycles.index, y=cycles.date,
+        else: # bottoms
+            # calculate projections
+            projectionList = []
+            for projDays in LL_days:
+                projection = row.date + timedelta(days=projDays)
+                if projection >= todaysDate:
+                    projectionList.append(projection)
+            if projectionList!=[] : LL_projs[row.date] = projectionList
+
+            projectionList = []
+            for projDays in LH_days:
+                projection = row.date + timedelta(days=projDays)
+                if projection >= todaysDate:
+                    projectionList.append(projection)
+            if projectionList != []: LH_projs[row.date] = projectionList
+
+            # gather new data
+            if (index + 1) < totalLength:
+                diff = topsAndBottoms.iloc[index + 1].date - row.date
+                LH_days.add(diff.days)
+
+                LHstart.append(row.date)
+                LHend.append(topsAndBottoms.iloc[index + 1].date)
+                LHdiff.append(diff.days)
+
+            if (index + 2) < totalLength:
+                diff = topsAndBottoms.iloc[index + 2].date - row.date
+                LL_days.add(diff.days)
+
+                LLstart.append(row.date)
+                LLend.append(topsAndBottoms.iloc[index + 2].date)
+                LLdiff.append(diff.days)
+
+    # Projection of next High
+    Hproj_bars = []
+    ganttList = []
+
+    for eachProj in HH_projs:
+        eachDates = HH_projs[eachProj]
+        length = len(eachDates)
+
+        thisBar = Bar(x=eachDates, y=[1]*length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
-                      showlegend=False,
+                      showlegend=True,
                       # hoverinfo='none',
-                      name='Projection for ' + trendText + ', ' + topBottomText,
+                      name='HH Projection from '+eachProj.strftime("%y-%m-%d"),
+                      dx=1
                       )
 
-    fig = Figure(data=[cyclesTrace])
+        Hproj_bars.append(thisBar)
+
+        for date in eachDates:
+            thisGantt = dict(Task=eachProj,Start=date,Finish=date+timedelta(days=7))
+            ganttList.append(thisGantt)
+
+    for eachProj in LH_projs:
+        eachDates = LH_projs[eachProj]
+        length = len(eachDates)
+
+        thisBar = Bar(x=eachDates, y=[1]*length,
+                      # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
+                      showlegend=True,
+                      # hoverinfo='none',
+                      name='LH Projection from '+eachProj.strftime("%y-%m-%d"),
+                      dx=1
+                      )
+
+        Hproj_bars.append(thisBar)
+
+        for date in eachDates:
+            thisGantt = dict(Task=eachProj,Start=date,Finish=date+timedelta(days=7))
+            ganttList.append(thisGantt)
+
+
+
+    layout = Layout(
+        barmode='stack',title='Projection of next Top'
+    )
+
+    fig = Figure(data=Hproj_bars, layout=layout)
+
+    gantt = ff.create_gantt(ganttList,showgrid_x=True,showgrid_y=True,height=900,width=1200)
+
+
+
+    # Projection of next Low
+    Lproj_bars = []
+    ganttListLow = []
+
+    for eachProj in LL_projs:
+        eachDates = LL_projs[eachProj]
+        length = len(eachDates)
+
+        thisBar = Bar(x=eachDates, y=[1]*length,
+                      # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
+                      showlegend=True,
+                      # hoverinfo='none',
+                      name='LL Projection from '+eachProj.strftime("%y-%m-%d"),
+                      dx=1
+                      )
+
+        Lproj_bars.append(thisBar)
+
+        for date in eachDates:
+            thisGantt = dict(Task=eachProj,Start=date,Finish=date+timedelta(days=7))
+            ganttListLow.append(thisGantt)
+
+    for eachProj in HL_projs:
+        eachDates = HL_projs[eachProj]
+        length = len(eachDates)
+
+        thisBar = Bar(x=eachDates, y=[1]*length,
+                      # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
+                      showlegend=True,
+                      # hoverinfo='none',
+                      name='HL Projection from '+eachProj.strftime("%y-%m-%d"),
+                      dx=1
+                      )
+
+        Lproj_bars.append(thisBar)
+
+        for date in eachDates:
+            thisGantt = dict(Task=eachProj,Start=date,Finish=date+timedelta(days=7))
+            ganttListLow.append(thisGantt)
+
+
+
+    layout = Layout(
+        barmode='stack',title='Projection of next Bottom'
+    )
+
+    figLow = Figure(data=Lproj_bars, layout=layout)
+
+    ganttLow = ff.create_gantt(ganttListLow,showgrid_x=True,showgrid_y=True,height=900,width=1200)
+
+
+    print(len(HHstart))
+    print(len(HHend))
+    print(len(HHdiff))
+
+
+    # tables for diagnostics
+    HH_table = Figure(data=[Table(header=dict(values=['Start','End','No. of days']),
+                     cells=dict(values=[HHstart,HHend,HHdiff]),name='HH interval data')], layout=Layout(title='HH interval data'))
+    HL_table = Figure(data=[Table(header=dict(values=['Start','End','No. of days']),
+                     cells=dict(values=[HLstart,HLend,HLdiff]),name='HL interval data')], layout=Layout(title='HL interval data'))
+    LL_table = Figure(data=[Table(header=dict(values=['Start','End','No. of days']),
+                     cells=dict(values=[LLstart,LLend,LLdiff]),name='LL interval data')], layout=Layout(title='LL interval data'))
+    LH_table = Figure(data=[Table(header=dict(values=['Start','End','No. of days']),
+                     cells=dict(values=[LHstart,LHend,LHdiff]),name='LH interval data')], layout=Layout(title='LH interval data'))
+
+
+
+    # figTable = plotly.tools.make_subplots(rows=2, cols=2, subplot_titles=('HH interval data',
+    #                                                                       'LL interval data',
+    #                                                                       'HL interval data',
+    #                                                                       'LH interval data',))
+    # figTable.append_trace(HH_table, 1, 1)
+    # figTable.append_trace(LL_table, 1, 2)
+    # figTable.append_trace(HL_table, 2, 1)
+    # figTable.append_trace(LH_table, 2, 2)
+
+
+
 
     return plotly.offline.plot(figure_or_data=fig,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=gantt,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=figLow,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=ganttLow,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=HH_table,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=LH_table,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=LL_table,
+                               show_link=False,
+                               output_type='div',
+                               include_plotlyjs=False,
+                               # filename='minorHLData.html',
+                               auto_open=False,
+                               config={'displaylogo': False,
+                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                  'zoomOut2d',
+                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+                                       'displayModeBar': False
+                                       }),\
+           plotly.offline.plot(figure_or_data=HL_table,
                                show_link=False,
                                output_type='div',
                                include_plotlyjs=False,
@@ -332,7 +574,7 @@ def groupByMonths(df):
     return pd.DataFrame(months)
 
 
-def plotter(figure, filename, HL_html):
+def plotter(figure, filename, htmlList):
     plotly.offline.plot(figure_or_data=figure,
                         show_link=False,
                         output_type='file',
@@ -346,7 +588,10 @@ def plotter(figure, filename, HL_html):
     with open(filename, 'r+') as htmlFile:
         contents = htmlFile.read()
         htmlFile.seek(0, 0)
-        htmlFile.write(line.rstrip('\r\n') + '\n' + contents + '\n' + HL_html)
+        htmlFile.write(line.rstrip('\r\n') + '\n' + contents)
+
+        for eachHtml in htmlList:
+            htmlFile.write('\n' + eachHtml)
 
 
 def plotTrendlines(trendLine, stuff, name, color, width, dash=None):

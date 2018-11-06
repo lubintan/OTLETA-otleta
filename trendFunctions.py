@@ -38,10 +38,10 @@ import time
 #
 #
 # TODO: UPDATE BY EACH DAY/BAR!
-# Current trend (always up or down.)
-# See if broke previous top or bottom.
-# If sideways, (trend up/down will just keep flipping.)
-# If doesn't break, keep the previous trend.
+# DONE: Current trend (always up or down.)
+# DONE: See if broke previous top or bottom.
+# DONE: If sideways, (trend up/down will just keep flipping.)
+# DONE: If doesn't break, keep the previous trend.
 #
 #
 # TODO:
@@ -421,12 +421,52 @@ def trendFinder(stuff):
 
     trendUp = pd.DataFrame()
     trendUp['date'] = topsAndBottoms.date
-    topsAndBottoms['trendUp'] = (topsAndBottoms.point > topsAndBottoms.shift(2).point)
-    trendUp['trendUp'] = (topsAndBottoms.point > topsAndBottoms.shift(2).point) * barHeight * 2 - barHeight
+    # topsAndBottoms['trendUp'] = False
+
+    # True if: is a top and breaks previous top,
+    # True if: is a top and does not break previous top but previous trend is True
+    # True if: is a bottom and does not break previous bottom and previous trend is True
+
+    # topsAndBottoms['trendUp'] = (topsAndBottoms.top) & (topsAndBottoms.point > topsAndBottoms.shift(2).point)
+    #
+    # topsAndBottoms['trendUp'] = (topsAndBottoms.top &
+    #                              (
+    #                                  (topsAndBottoms.point > topsAndBottoms.shift(2).point)|
+    #                                  topsAndBottoms.shift(1).trendUp
+    #                              ))| (topsAndBottoms.bottom &
+    #                                   (topsAndBottoms.point > topsAndBottoms.shift(2).point) &
+    #                                   topsAndBottoms.shift(1).trendUp
+    #                                   )
+
+    upTrendList=[]
+
+    topsAndBottoms.reset_index(drop=True,inplace=True)
+    for index,row in topsAndBottoms.iterrows():
+        if index < 2:
+            upTrendList.append(False)
+            continue
+        if row.top:
+            if row.point > topsAndBottoms.iloc[index-2].point:
+                upTrendList.append(True)
+            else:
+                upTrendList.append(upTrendList[index-1])
+
+        else: #if row.bottom
+            if row.point >= topsAndBottoms.iloc[index-2].point:
+                upTrendList.append(upTrendList[index - 1])
+            else:
+                upTrendList.append(False)
+    # map(lambda x: x * 2, l)
+    # upTrendList =
     trendUp.reset_index(drop=True, inplace=True)
+
+
+    trendUp['trendUp'] = [x * barHeight * 2 - barHeight for x in upTrendList]
+    # trendUp.reset_index(drop=True, inplace=True)
 
     trendUp.ix[0, 'trendUp'] = 0
     trendUp.ix[1, 'trendUp'] = 0
+
 
     ups = trendUp[trendUp.trendUp > 0]
     downs = trendUp[trendUp.trendUp < 0]
@@ -454,7 +494,16 @@ def trendFinder(stuff):
     #              )
     # plotly.offline.plot(fig)
 
-    return upsTrace, downsTrace, topsAndBottoms
+    stringTrend = 'Current Trend is: '
+
+    print(upTrendList[-1])
+
+    if upTrendList[-1]:
+        stringTrend += 'UP'
+    else:
+        stringTrend += 'DOWN'
+
+    return upsTrace, downsTrace, topsAndBottoms, stringTrend
 
 
 def plotTopBotHist(stuff):

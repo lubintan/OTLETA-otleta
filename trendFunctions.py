@@ -20,7 +20,6 @@ import time
 # tables, histograms
 
 # TODO:
-# Hurst Cycles - Start Date
 # Window 1999-2001
 # Check for toppest top and bottomest bottom
 # Take date - Get year, month, week, day for that top/bottom point.
@@ -43,6 +42,10 @@ import time
 # DONE: If sideways, (trend up/down will just keep flipping.)
 # DONE: If doesn't break, keep the previous trend.
 #
+# TODO:
+# Fig 12.2, 12.3 - show difference in price, time at max/min points.
+# (Non-trend indicator. Raw data)
+
 #
 # TODO:
 # Tops and Bottoms Projection
@@ -75,6 +78,77 @@ import time
 
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
+
+def retracementLines(firstPoint,lastPoint,x):
+
+    lastPoint = lastPoint.values[0]
+    firstPoint = firstPoint.values[0]
+
+    trendRange = lastPoint - firstPoint
+    print(firstPoint)
+    print(lastPoint)
+    print(trendRange)
+    # exit()
+
+    levels = []
+
+    if trendRange > 0: #uptrend
+        retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
+
+        for percent in retracementPercentages:
+            levels.append(percent*trendRange + firstPoint)
+
+    else:
+        retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
+
+        for percent in retracementPercentages:
+            levels.append(percent*trendRange + firstPoint) # trendrange is negative here
+
+    traces = []
+    # annot = []
+
+    color = '#000080'
+    width = 1
+    dash = 'dash' #'dot', 'dashdot'
+
+
+    firstLine = Scatter(name='Retracement', x=x, y=[levels[0],levels[0]],
+                      mode='lines+text',
+                      line=dict(color=color,
+                                width=width,
+                                dash=dash
+                                ),
+                      # marker=dict(symbol='circle'),
+                      hoverinfo='y', #'none'
+                     legendgroup='retracement',
+                        textposition='middle right',
+                        textfont=dict(color=color),
+                        text=['', '%.1f' % (retracementPercentages[0] * 100) + '%']
+
+                      )
+    # annot.append(dict(x=x[-1],y=levels[0],text=str(retracementPercentages[0]),showarrow=False,ax=0,ay=-30,font=dict(color=color)))
+    traces.append(firstLine)
+
+    for idx in range(1,len(levels)):
+        thisLine= Scatter(name='Retracement', x=x, y=[levels[idx],levels[idx]],
+                      mode='lines+text',
+                      line=dict(color=color,
+                                width=width,
+                                dash=dash
+                                ),
+                      # marker=dict(symbol='circle'),
+                      hoverinfo='y', #'none'
+                     legendgroup='retracement',
+                          showlegend=False,
+                          textposition='middle right',
+                          textfont=dict(color=color),
+                          text=['','%.1f'%(retracementPercentages[idx] * 100) + '%']
+                          )
+
+        # annot.append(dict(x=x[-1], y=levels[idx], text=str(retracementPercentages[idx]), showarrow=False, ax=0, ay=-30,font=dict(color=color)))
+        traces.append(thisLine)
+
+    return traces
 
 def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     if not (
@@ -467,7 +541,6 @@ def trendFinder(stuff):
     trendUp.ix[0, 'trendUp'] = 0
     trendUp.ix[1, 'trendUp'] = 0
 
-
     ups = trendUp[trendUp.trendUp > 0]
     downs = trendUp[trendUp.trendUp < 0]
     # print(ups)
@@ -495,15 +568,29 @@ def trendFinder(stuff):
     # plotly.offline.plot(fig)
 
     stringTrend = 'Current Trend is: '
-
-    print(upTrendList[-1])
-
     if upTrendList[-1]:
         stringTrend += 'UP'
     else:
         stringTrend += 'DOWN'
 
-    return upsTrace, downsTrace, topsAndBottoms, stringTrend
+
+    currentTrend = trendUp.iloc[-1].trendUp
+    prevTrend = False
+    for i in range(len(trendUp)-1,-1,-1):
+
+        if (trendUp.iloc[i].trendUp != currentTrend) and not prevTrend:
+            lastDate = trendUp.iloc[i].date
+            prevTrend = True
+            continue
+
+        if (trendUp.iloc[i].trendUp == currentTrend) and prevTrend:
+            firstDate = trendUp.iloc[i+1].date
+            break
+
+    print('first:', firstDate)
+    print('last:', lastDate)
+
+    return upsTrace, downsTrace, topsAndBottoms, stringTrend, firstDate, lastDate
 
 
 def plotTopBotHist(stuff):
@@ -629,7 +716,7 @@ def plotter(figure, filename, htmlList):
                         output_type='file',
                         include_plotlyjs=False,
                         filename=filename,
-                        auto_open=False,
+                        auto_open=True,
                         config={'displaylogo': False,
                                 'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d', 'zoomOut2d',
                                                            'resetScale2d', 'hoverCompareCartesian', 'lasso2d']})
@@ -645,14 +732,13 @@ def plotter(figure, filename, htmlList):
 
 def plotTrendlines(trendLine, stuff, name, color, width, dash=None):
     line = Scatter(name=name + 'Trend', x=trendLine.date, y=trendLine.point,
-                   mode='lines+markers',
+                   mode='lines',
                    line=dict(color=color,
                              width=width,
                              dash=dash
                              ),
                    hoverinfo='none',
                    showlegend=False,
-
                    )
 
     tops = Scatter(name=name + ' Tops', x=stuff['tops'].date, y=stuff['tops'].point,
@@ -688,7 +774,11 @@ def getTrendTopsAndBottoms(trendLine, df):
     tops = ((trendLine.point > trendLine.shift(1).point) & (trendLine.point > trendLine.shift(-1).point))
     bottoms = ((trendLine.point < trendLine.shift(1).point) & (trendLine.point < trendLine.shift(-1).point))
 
+    trendLine['top'] = tops
+    trendLine['bottom'] = bottoms
+
     reindexed = trendLine.reset_index(drop=True)
+
     dateIndexOnly = pd.DataFrame()
     dateIndexOnly['i'] = df.reset_index(drop=True).index
     dateIndexOnly['date'] = df.date
@@ -763,17 +853,24 @@ def getTrendTopsAndBottoms(trendLine, df):
 
     # endregion
 
-    trendLine['top'] = tops
-    trendLine['bottom'] = bottoms
     topText = []
     bottomText = []
-    for index, row in trendLine.iterrows():
+    topAndBottomPoints['xDiff'] = topAndBottomPoints.i - topAndBottomPoints.shift(1).i
+    topAndBottomPoints['yDiff'] = topAndBottomPoints.point - topAndBottomPoints.shift(1).point
+
+    topAndBottomPoints.fillna(value=0,inplace=True)
+
+
+
+    for index, row in topAndBottomPoints.iterrows():
         if row.top:
-            topText.append(str(row.point))
+            text = str(row.point) + '<br>'+ str(int(row.xDiff)) + '<br>' + '%.4f'%(row.yDiff)
+            topText.append(text)
             # bottomText.append('')
         elif row.bottom:
             # topText.append('')
-            bottomText.append(str(row.point))
+            text = str(row.point) + '<br>' + str(int(row.xDiff)) + '<br>' + '%.4f' % (row.yDiff)
+            bottomText.append(text)
         # else:
         #     topText.append('')
         #     bottomText.append('')
@@ -868,6 +965,9 @@ def processOutsideBars(row, trendPoints, DELAY, minorPoints):
 
 
 def getTrendLine(dfIgnoreInsideBars):
+    dfIgnoreInsideBars['outside'] = (dfIgnoreInsideBars.high > dfIgnoreInsideBars.shift(1).high) & (
+                dfIgnoreInsideBars.low < dfIgnoreInsideBars.shift(1).low)
+
     minorPoints = []
     intermediatePoints = []
     majorPoints = []

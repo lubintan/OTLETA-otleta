@@ -11,6 +11,8 @@ import scipy as sp
 import time
 from trendFunctions import *
 
+GAUGE = []
+
 def removeDuplicates(cycles):
     cycles = set(cycles)
     cycles = list(cycles)
@@ -22,7 +24,7 @@ def checkNoDuplicates(pointsList):
         return True
     return False
 
-def fillUpTopLevel(prevCycle,topCycle,compareList,prevPeriod,bufferFactor=0.3,maxHeight = 100):
+def fillUpTopLevel(prevCycle,topCycle,compareList,prevPeriod,ma, bufferFactor=0.3):
 
     pointScore = []
     pointDict = {}
@@ -32,7 +34,7 @@ def fillUpTopLevel(prevCycle,topCycle,compareList,prevPeriod,bufferFactor=0.3,ma
     for i in range(len(prevCycle)):
         temp = []
         for eachPointList in compareList:
-            temp.append(getScore(prevCycle[i],eachPointList,bufferFactor*prevPeriod,maxHeight))
+            temp.append(getScore(prevCycle[i],eachPointList,bufferFactor*prevPeriod,ma))
         thisScore = np.sum(temp)
         pointScore.append(thisScore)
         pointDict[thisScore] = i
@@ -58,7 +60,7 @@ def fillUpTopLevel(prevCycle,topCycle,compareList,prevPeriod,bufferFactor=0.3,ma
     topCycle.sort()
     return topCycle
 
-def getScore(point, otherPoints, buffer, maxHeight):
+def getScore(point, otherPoints, buffer, ma):
 
     left = point - (buffer/2)
     right = point + (buffer/2)
@@ -72,7 +74,7 @@ def getScore(point, otherPoints, buffer, maxHeight):
             #vertical: the lower the point, the better.
             #score: the higher the better
             horDiff = abs(point-idx)
-            vertical = maxHeight - row.point
+            vertical = ma.iloc[idx].movingAverage - row.point
             score = vertical - horDiff
             scoreList.append(score)
 
@@ -92,33 +94,42 @@ def getAvgPeriods(cyclePoints, left, right):
         if (left <= cyclePoints[i]) and (cyclePoints[i+1] <= right):
             periods.append(cyclePoints[i+1]-cyclePoints[i])
 
+
     return '%.2f' %(np.mean(periods))
 
-def postDownFiller(longerCycle,shorterCycle,dfLowLp,dfLowLp1Deg):
+def postDownFiller(longerCycle,shorterCycle,dfLowLp,dfLowLp1Deg,fillDown=[]):
 
     for i in range(len(longerCycle)-1):
         if not checkPointsInPeriod(longerCycle[i],longerCycle[i+1],pointList=shorterCycle):
             newPoint = addPointBetween(longerCycle[i],longerCycle[i+1], dfLowLp, dfLowLp1Deg)
             if newPoint!=longerCycle[i]:
                 shorterCycle.append(newPoint)
+                #fill down
+                for eachCycle in fillDown:
+                    eachCycle.append(newPoint)
+                    eachCycle.sort()
     shorterCycle.sort()
 
 def addPointBetween(left,right,dfLowLp,dfLowLp1Deg):
     tempY = []
     tempDict = {}
 
+    mid = (left+right)/2.0
+
     for idx,row in dfLowLp.iterrows():
         if (left<idx) and (idx<right):
-            tempY.append(row.point)
-            tempDict[row.point] = idx
+            dist= abs(idx-mid)
+            tempY.append(dist)
+            tempDict[dist] = idx
 
     if len(tempY) > 0:
         return tempDict[min(tempY)]
 
     for idx, row in dfLowLp1Deg.iterrows():
         if (left < idx) and (idx < right):
-            tempY.append(row.point)
-            tempDict[row.point] = idx
+            dist = abs(idx - mid)
+            tempY.append(dist)
+            tempDict[dist] = idx
 
     if len(tempY) > 0:
         return tempDict[min(tempY)]
@@ -136,7 +147,7 @@ def fillUp(longerPeriodCycle,shorterPeriodCycle, nominal, lastPoint, timeToleran
     for eachLow in longerPeriodCycle:
         if (eachLow+rightDist) > lastPoint: break
         if not checkPointsInPeriod(eachLow,(eachLow+rightDist), longerPeriodCycle):
-            newPoint = addPointFromShorterCycle(eachLow+rightDist,shorterPeriodCycle,longerPeriodCycle)
+            newPoint = addPointFromShorterCycle(eachLow+nominal,shorterPeriodCycle,longerPeriodCycle)
             if newPoint!=eachLow:longerPeriodCycle.append(newPoint)
         longerPeriodCycle.sort()
         # print(longerPeriodCycle)
@@ -147,7 +158,7 @@ def fillUp(longerPeriodCycle,shorterPeriodCycle, nominal, lastPoint, timeToleran
     for eachLow in leftLows:
         if eachLow < rightDist: break
         if not checkPointsInPeriod(eachLow - rightDist, eachLow, leftLows, ):
-            newPoint=addPointFromShorterCycle((eachLow - rightDist), shorterPeriodCycle,longerPeriodCycle)
+            newPoint=addPointFromShorterCycle(eachLow - nominal, shorterPeriodCycle,longerPeriodCycle)
             if newPoint!=eachLow: leftLows.append(newPoint)
         leftLows.sort()
         leftLows.reverse()
@@ -158,6 +169,7 @@ def fillUp(longerPeriodCycle,shorterPeriodCycle, nominal, lastPoint, timeToleran
     longerPeriodCycle = set(longerPeriodCycle)
     longerPeriodCycle = list(longerPeriodCycle)
     longerPeriodCycle.sort()
+    shorterPeriodCycle.sort()
 
     # print(longerPeriodCycle)
 
@@ -314,7 +326,10 @@ def removeExtras(numRatio,higherPeriodCycle,lowerPeriodCycle,lows):
             for each in lowsToRemove:
                 lowerPeriodCycle.remove(lowDict[each])
 
-def checkLeftRight(barNum, perhaps, cyclesM, M_weeks, numCycles, cycleAllowance, totalDataLength, filldownList):
+def checkLeftRight(barNum, perhaps, cyclesM, M_weeks, numCycles, cycleAllowance, totalDataLength, filldownList, upperCycles=[],upperCyclePeriods=[]):
+    # percentage of period that needs to be cleared for upper cycle before putting in new one
+    allowPercent = 1 - cycleAllowance
+
     # check right side
 
     if (barNum + (M_weeks*numCycles)) < totalDataLength:
@@ -353,6 +368,21 @@ def checkLeftRight(barNum, perhaps, cyclesM, M_weeks, numCycles, cycleAllowance,
                     # if count ==0:
                     #endregion
 
+                    # check if too close to upper cycles
+                    pointsTooClose = False
+                    for upperIdx in range(len(upperCycles)):
+                        for eachUpperPoint in upperCycles[upperIdx]:
+                            if abs(eachUpperPoint-each[0]) < (allowPercent*upperCyclePeriods[upperIdx]):
+                                pointsTooClose = True
+
+                    if pointsTooClose:
+                        # remove from perhaps
+                        for eachValue in perhaps:
+                            if eachValue[0] == each[0]:
+                                perhaps.remove(eachValue)
+                        continue
+
+                    # add point
                     cyclesM.append(each[0])
                     # fill down
                     value = cyclesM[-1]
@@ -360,22 +390,31 @@ def checkLeftRight(barNum, perhaps, cyclesM, M_weeks, numCycles, cycleAllowance,
                         eachCycle.append(value)
 
                     # remove from perhaps
-                    for each in perhaps:
-                        if each[0] == value:
-                            perhaps.remove(each)
+                    for eachValue in perhaps:
+                        if eachValue[0] == value:
+                            perhaps.remove(eachValue)
 
 
-        elif len(perhaps2) > 0:
-            cyclesM.append(perhaps2[-1][0])
-            # fill down
-            value = cyclesM[-1]
-            for eachCycle in filldownList:
-                eachCycle.append(value)
+        elif len(perhaps2) == 1:
+
+            # check if too close to upper cycles
+            pointsTooClose = False
+            for upperIdx in range(len(upperCycles)):
+                for eachUpperPoint in upperCycles[upperIdx]:
+                    if abs(eachUpperPoint - perhaps2[-1][0]) < (allowPercent * upperCyclePeriods[upperIdx]):
+                        pointsTooClose = True
+
+            if not pointsTooClose:
+                cyclesM.append(perhaps2[-1][0])
+                # fill down
+                value = cyclesM[-1]
+                for eachCycle in filldownList:
+                    eachCycle.append(value)
 
             # remove from perhaps
-            for each in perhaps:
-                if each[0] == value:
-                    perhaps.remove(each)
+            for eachValue in perhaps:
+                if eachValue[0] == perhaps2[-1][0]:
+                    perhaps.remove(eachValue)
 
     if (barNum > (numCycles*M_weeks)):
         lowerbound = barNum - (M_weeks*numCycles) - (M_weeks*cycleAllowance)
@@ -394,6 +433,22 @@ def checkLeftRight(barNum, perhaps, cyclesM, M_weeks, numCycles, cycleAllowance,
 
             for each in perhaps2:
                 if each[1] == lowestDiff:
+
+                    # check if too close to upper cycles
+                    pointsTooClose = False
+                    for upperIdx in range(len(upperCycles)):
+                        for eachUpperPoint in upperCycles[upperIdx]:
+                            if abs(eachUpperPoint - each[0]) < (allowPercent * upperCyclePeriods[upperIdx]):
+                                pointsTooClose = True
+
+                    if pointsTooClose:
+                        # remove from perhaps
+                        for eachValue in perhaps:
+                            if eachValue[0] == each[0]:
+                                perhaps.remove(eachValue)
+                        continue
+
+                    # add point
                     cyclesM.append(each[0])
                     # fill down
                     value = cyclesM[-1]
@@ -401,22 +456,31 @@ def checkLeftRight(barNum, perhaps, cyclesM, M_weeks, numCycles, cycleAllowance,
                         eachCycle.append(value)
 
                     # remove from perhaps
-                    for each in perhaps:
-                        if each[0] == value:
-                            perhaps.remove(each)
+                    for eachValue in perhaps:
+                        if eachValue[0] == value:
+                            perhaps.remove(eachValue)
 
 
-        elif len(perhaps2) > 0:
-            cyclesM.append(perhaps2[-1][0])
-            # fill down
-            value = cyclesM[-1]
-            for eachCycle in filldownList:
-                eachCycle.append(value)
+        elif len(perhaps2) == 1:
+
+            # check if too close to upper cycles
+            pointsTooClose = False
+            for upperIdx in range(len(upperCycles)):
+                for eachUpperPoint in upperCycles[upperIdx]:
+                    if abs(eachUpperPoint - perhaps2[-1][0]) < (allowPercent * upperCyclePeriods[upperIdx]):
+                        pointsTooClose = True
+
+            if not pointsTooClose:
+                cyclesM.append(perhaps2[-1][0])
+                # fill down
+                value = cyclesM[-1]
+                for eachCycle in filldownList:
+                    eachCycle.append(value)
 
             # remove from perhaps
-            for each in perhaps:
-                if each[0] == value:
-                    perhaps.remove(each)
+            for eachValue in perhaps:
+                if eachValue[0] == perhaps2[-1][0]:
+                    perhaps.remove(eachValue)
 
     return perhaps
 
@@ -546,7 +610,7 @@ def extendMA(ma,period):
     # print(ma.tail())
     return ma
 
-def plotVerticalSubs(mainTrace,title,lastIdx,avgList = [],others=[],anchorPoint=None):
+def plotVerticalSubs(filename, mainTrace,title,lastIdx,avgList = [],others=[],anchorPoint=None):
     numRows = len(others)
     fig = plotly.tools.make_subplots(
         rows=numRows+1, cols=1, shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.001,row_width=[0.1]*numRows+[0.8])
@@ -554,17 +618,16 @@ def plotVerticalSubs(mainTrace,title,lastIdx,avgList = [],others=[],anchorPoint=
     for eachTrace in mainTrace:
         fig.append_trace(eachTrace,1,1)
 
-
-
+    fig.append_trace(anchorPoint, 4, 1)
     for i in range(numRows):
         fig.append_trace(others[i], i + 2, 1)
-        fig.append_trace(anchorPoint, i + 2, 1)
+
 
     fig['layout'].update(xaxis=dict(rangeslider=dict(visible=False),gridwidth=2,mirror='ticks',nticks=30,showgrid=True),
                          yaxis2 = dict(showticklabels=False,title='Inverse MA'),
-                         yaxis3=dict(showticklabels=False,title='54M'),
-                         yaxis4=dict(showticklabels=False,title='18M'),
-                         yaxis5=dict(showticklabels=False,title='9M'),
+                         yaxis3=dict(showticklabels=False,title='240W'),
+                         yaxis4=dict(showticklabels=False,title='80W'),
+                         yaxis5=dict(showticklabels=False,title='40W'),
                          yaxis6=dict(showticklabels=False,title='20W'),
                          yaxis7=dict(showticklabels=False,title='10W'),
                          title=title,
@@ -617,19 +680,23 @@ def plotVerticalSubs(mainTrace,title,lastIdx,avgList = [],others=[],anchorPoint=
 
 
 
-    plotly.offline.plot(fig)
+    plotly.offline.plot(fig,output_type='file',filename=filename)
 
 def main(tickerName):
+    global GAUGE
+
     window = 5
-    # df = pd.read_excel('EURUSD Weekly Data for Swing Indicator.xlsx')[0:100]
+    if tickerName == 'EURUSD':
+        df = pd.read_excel('EURUSD Weekly Data for Swing Indicator.xlsx')[100:450]
+        df.columns = ['Date','Close','Open','High','Low']
 
-    # df = pd.read_csv('BA.csv')
+    elif tickerName=='BA':
+        df = pd.read_csv('BA.csv')
 
-
-    df = web.DataReader(name=tickerName,data_source='yahoo',start='01-01-2013',end='11-14-2018')
-    df['Date'] = df.index
-
-    df = df.asfreq('W-Mon',method='pad')
+    else:
+        df = web.DataReader(name=tickerName,data_source='yahoo',start='10-01-2012',end='11-14-2018')
+        df['Date'] = df.index
+        df = df.asfreq('W-Mon',method='pad')
 
     # print(df)
 
@@ -660,11 +727,6 @@ def main(tickerName):
 
     df.reset_index(drop=True, inplace=True)
 
-    print('length:',len(df))
-
-
-
-
     timeTolerance = 0.4  # 40%
 
     M54_weeks = 234  # approx 234 weeks in 54 months
@@ -683,24 +745,25 @@ def main(tickerName):
     W10_weeks = 10
 
 
-    # trendlines
+    # region:trendlines
 
-    dfCopy = df.copy()
-    dfCopy.columns = ['date', 'open', 'high', 'low', 'close', 'adj close', 'volume']
-    dfCopy['INDEX'] = dfCopy.index
-    if 'lowFirst' not in dfCopy.columns: dfCopy['lowFirst'] = dfCopy.open < dfCopy.close
+    # dfCopy = df.copy()
+    # dfCopy.columns = ['date', 'open', 'high', 'low', 'close', 'adj close', 'volume']
+    # dfCopy['INDEX'] = dfCopy.index
+    # if 'lowFirst' not in dfCopy.columns: dfCopy['lowFirst'] = dfCopy.open < dfCopy.close
+    # #
+    # # print(dfCopy)
+    # # print()
+    # # print(df)
+    # #
+    # # exit()
     #
-    # print(dfCopy)
-    # print()
-    # print(df)
+    # minTrend, intTrend, majTrend = getTrendLine(dfCopy)
     #
-    # exit()
-
-    minTrend, intTrend, majTrend = getTrendLine(dfCopy)
-
-    minTrend = minTrend.merge(right=dfCopy, left_on='date', right_on='date')
-    intTrend = intTrend.merge(right=dfCopy, left_on='date', right_on='date')
-    majTrend = majTrend.merge(right=dfCopy, left_on='date', right_on='date')
+    # minTrend = minTrend.merge(right=dfCopy, left_on='date', right_on='date')
+    # intTrend = intTrend.merge(right=dfCopy, left_on='date', right_on='date')
+    # majTrend = majTrend.merge(right=dfC opy, left_on='date', right_on='date')
+    #endregion
 
     # print(minTrend)
     # # print(df.Date)
@@ -708,7 +771,7 @@ def main(tickerName):
     # exit()
 
     period0 = 99
-    period1 = 41
+    period1 = 41 #periods below 41 removed, above 41 kept.
     period2 = 21
     period3 = 11
     period4 = 5
@@ -788,8 +851,8 @@ def main(tickerName):
 
     ### check 18M cycle.
     # ma3Lp = lowestPointFinder(lowerband3)
-    majTrend.set_index('INDEX', inplace=True)
-    majTrend = majTrend.point
+    # majTrend.set_index('INDEX', inplace=True)
+    # majTrend = majTrend.point
 
     dfLowLp = lowestPointFinder(df.Low)
     dfLowLp1Deg = lowestPointFinder1Deg(df.Low)
@@ -833,7 +896,7 @@ def main(tickerName):
         print('------------ NOT SUITABLE -----------')
         return 1
 
-    anchorPoint = Scatter(name='Anchor Points',x = [cyclesM18[-1]], y=[0],mode='markers',marker=dict(color='red',width=15))
+    anchorPoint = Scatter(name='Starting Point',x = [cyclesM18[-1]], y=[0],mode='markers',marker=dict(color='red',size=15))
 
     perhaps = checkLeftRight(cyclesM18[-1],perhaps,cyclesM18,M18_weeks,1,timeTolerance,len(df),[cyclesM9,cyclesW20,cyclesW10])
     perhaps = checkLeftRight(cyclesM18[-1], perhaps, cyclesM18, M18_weeks, 2, timeTolerance, len(df),
@@ -904,9 +967,10 @@ def main(tickerName):
         # print('After check 1 period:', perhaps)
         #endregion
 
-        #region: check 2 period to right and left
+        #region: check 2 periods to right and left
         perhaps = checkLeftRight(weekNum,perhaps,cyclesM9,M9_weeks,numCycles=2,cycleAllowance=timeTolerance,
-                       totalDataLength=len(df),filldownList=[cyclesW20,cyclesW10,cyclesM18])
+                       totalDataLength=len(df),filldownList=[cyclesW20,cyclesW10,cyclesM18],
+                                 upperCycles=[cyclesM18],upperCyclePeriods=[M18_weeks])
         # print()
         # print('After check 2 periods:',perhaps)
         #endregion
@@ -934,7 +998,7 @@ def main(tickerName):
 
         #region: check 2 period to right and left
         perhaps = checkLeftRight(weekNum,perhaps,cyclesW20,W20_weeks,numCycles=2,cycleAllowance=timeTolerance,
-                       totalDataLength=len(df),filldownList=[cyclesW10,cyclesM9])
+                       totalDataLength=len(df),filldownList=[cyclesW10,cyclesM9],upperCycles =[cyclesM9,cyclesM18],upperCyclePeriods=[M9_weeks,M18_weeks])
         # print()
         # print('After check 2 periods:',perhaps)
         #endregion
@@ -962,11 +1026,20 @@ def main(tickerName):
 
         # region: check 2 period to right and left
         perhaps = checkLeftRight(weekNum, perhaps, cyclesW10, W10_weeks, numCycles=2, cycleAllowance=timeTolerance,
-                                 totalDataLength=len(df), filldownList=[cyclesW20])
+                                 totalDataLength=len(df), filldownList=[cyclesW20],
+                                 upperCycles=[cyclesW20,cyclesM9,cyclesM18],upperCyclePeriods=[W20_weeks,M9_weeks,M18_weeks])
         # print()
         # print('After check 2 periods:',perhaps)
         # endregion
 
+
+    print('% of W10 points compared to total length divided by 10:', len(cyclesW10)*100/(len(df)/10),'%')
+    GAUGE.append(len(cyclesW10)*100/(len(df)/10))
+    # if len(cyclesW10) < ( len(df)/10): return 2
+
+    if len(cyclesW10)*100/(len(df)/10) < 10:
+        print('--------- DATA IS NOT CLEAR ENOUGH ------')
+        return 2
 
     gapfillers(cyclesW10,dfLowLp1Deg,dfLowLp,ma4Lp,len(df),timeTolerance,nominal=W10_weeks)
 
@@ -989,8 +1062,15 @@ def main(tickerName):
     fillUp(longerPeriodCycle=cyclesM18, shorterPeriodCycle=cyclesM9, nominal=M18_weeks, lastPoint=len(df),
            timeTolerance=timeTolerance)
 
-    postDownFiller(cyclesM18,cyclesM9,dfLowLp,dfLowLp1Deg)
-    postDownFiller(cyclesM9, cyclesW20, dfLowLp, dfLowLp1Deg)
+    # remove duplicates
+    cyclesM54 = removeDuplicates(cyclesM54)
+    cyclesM18 = removeDuplicates(cyclesM18)
+    cyclesM9 = removeDuplicates(cyclesM9)
+    cyclesW20 = removeDuplicates(cyclesW20)
+    cyclesW10 = removeDuplicates(cyclesW10)
+
+    postDownFiller(cyclesM18,cyclesM9,dfLowLp,dfLowLp1Deg,fillDown=[cyclesW20,cyclesW10])
+    postDownFiller(cyclesM9, cyclesW20, dfLowLp, dfLowLp1Deg,fillDown=[cyclesW10])
     postDownFiller(cyclesW20, cyclesW10, dfLowLp, dfLowLp1Deg)
 
 
@@ -1000,7 +1080,14 @@ def main(tickerName):
     #fill in the top most level
     cyclesM18 = removeDuplicates(cyclesM18)
 
-    fillUpTopLevel(prevCycle=removeDuplicates(cyclesM18),topCycle=cyclesM54,compareList=[ma1Lp,ma2Lp,ma3Lp,ma4Lp,dfLowLp],prevPeriod=period1,maxHeight=max(df.Low))
+    fillUpTopLevel(prevCycle=removeDuplicates(cyclesM18),topCycle=cyclesM54,compareList=[ma1Lp,ma2Lp,ma3Lp,ma4Lp,dfLowLp],prevPeriod=period1,ma=ma4)
+
+    #remove duplicates
+    cyclesM54 = removeDuplicates(cyclesM54)
+    cyclesM18 = removeDuplicates(cyclesM18)
+    cyclesM9 = removeDuplicates(cyclesM9)
+    cyclesW20 = removeDuplicates(cyclesW20)
+    cyclesW10 = removeDuplicates(cyclesW10)
 
     avgList = [
         getAvgPeriods(cyclesM54, cyclesM18[0], cyclesM18[-1]),
@@ -1020,23 +1107,23 @@ def main(tickerName):
 
     # ma0 = Scatter(x=ma0.index, y=ma0.movingAverage, mode='lines', marker=dict(color='orange'), line=dict(dash='dash'))
     # upperband0 = Scatter(x=upperband0.index, y=upperband0, mode='lines', marker=dict(color='orange'))
-    # lowerband0 = Scatter(x=lowerband0.index, y=lowerband0, mode='lines', marker=dict(color='orange'))
+    # lowerband0 = Scatter(name = 'period '+str(period0)+' lowerband',x=lowerband0.index, y=lowerband0, mode='lines', marker=dict(color='orange'))
 
     ma1 = Scatter(x=ma1.index, y=ma1.movingAverage, mode='lines', marker=dict(color='blue'), line=dict(dash='dash'))
     upperband1 = Scatter(x=upperband1.index, y=upperband1, mode='lines', marker=dict(color='blue'))
-    lowerband1 = Scatter(x=lowerband1.index, y=lowerband1, mode='lines', marker=dict(color='blue'))
+    lowerband1 = Scatter(name = 'period '+str(period1)+' lowerband',x=lowerband1.index, y=lowerband1, mode='lines', marker=dict(color='blue'))
 
     ma2 = Scatter(x=ma2.index, y=ma2.movingAverage, mode='lines', marker=dict(color='red'), line=dict(dash='dash'))
     upperband2 = Scatter(x=upperband2.index, y=upperband2, mode='lines', marker=dict(color='red'))
-    lowerband2 = Scatter(x=lowerband2.index, y=lowerband2, mode='lines', marker=dict(color='red'))
+    lowerband2 = Scatter(name = 'period '+str(period2)+' lowerband',x=lowerband2.index, y=lowerband2, mode='lines', marker=dict(color='red'))
 
     ma3 = Scatter(x=ma3.index, y=ma3.movingAverage, mode='lines', marker=dict(color='green'), line=dict(dash='dash'))
     upperband3 = Scatter(x=upperband3.index, y=upperband3, mode='lines', marker=dict(color='green'))
-    lowerband3 = Scatter(x=lowerband3.index, y=lowerband3, mode='lines', marker=dict(color='green'))
+    lowerband3 = Scatter(name = 'period '+str(period3)+' lowerband',x=lowerband3.index, y=lowerband3, mode='lines', marker=dict(color='green'))
 
     ma4 = Scatter(x=ma4.index, y=ma4.movingAverage, mode='lines', marker=dict(color='green'), line=dict(dash='dash'))
     upperband4 = Scatter(x=upperband4.index, y=upperband4, mode='lines', marker=dict(color='green'))
-    lowerband4 = Scatter(x=lowerband4.index, y=lowerband4, mode='lines', marker=dict(color='green'))
+    lowerband4 = Scatter(name = 'period '+str(period4)+' lowerband',x=lowerband4.index, y=lowerband4, mode='lines', marker=dict(color='green'))
 
     # ma0Lp = Scatter(x=ma0Lp.index, y=ma0Lp.point, mode='markers', marker=dict(color='orange', size=10))
     ma1Lp = Scatter(x=ma1Lp.index, y=ma1Lp.point, mode='markers', marker=dict(color='navy', size=10))
@@ -1046,14 +1133,14 @@ def main(tickerName):
 
 
     M54 = Scatter(name=avgList[0], x=cyclesM54, y=[0] * len(cyclesM54), mode='markers', marker=dict(size=10, color='green'),showlegend=True)
-    M18 = Scatter(name=avgList[1], x=cyclesM18, y=[0] * len(cyclesM18), mode='markers', marker=dict(size=10, color='olive'),showlegend=True)
+    M18 = Scatter(name=avgList[1], x=cyclesM18, y=[0] * len(cyclesM18), mode='markers', marker=dict(size=10, color='orange'),showlegend=True)
     M9 = Scatter(name=avgList[2], x=cyclesM9, y=[0] * len(cyclesM9), mode='markers', marker=dict(size=10, color='navy'),showlegend=True)
     W20 = Scatter(name=avgList[3], x=cyclesW20, y=[0] * len(cyclesW20), mode='markers', marker=dict(size=10, color='blue'),showlegend=True)
     W10 = Scatter(name=avgList[4], x=cyclesW10, y=[0] * len(cyclesW10), mode='markers', marker=dict(size=10, color='purple'),showlegend=True)
 
-    minTrend = Scatter(x=minTrend.INDEX, y=minTrend.point, mode='lines', line=dict(color='grey'))
-    intTrend = Scatter(x=intTrend.INDEX, y=intTrend.point, mode='lines', line=dict(color='orange'))
-    majTrend = Scatter(x=majTrend.index, y=majTrend, mode='lines', line=dict(color='purple'))
+    # minTrend = Scatter(x=minTrend.INDEX, y=minTrend.point, mode='lines', line=dict(color='grey'))
+    # intTrend = Scatter(x=intTrend.INDEX, y=intTrend.point, mode='lines', line=dict(color='orange'))
+    # majTrend = Scatter(x=majTrend.index, y=majTrend, mode='lines', line=dict(color='purple'))
     dfLowLp = Scatter(x=dfLowLp.index, y=dfLowLp.point, mode='markers', line=dict(color='purple'),
                          marker=dict(size=7))
 
@@ -1062,24 +1149,24 @@ def main(tickerName):
         # ma0,
         # lowerband0,
         # ma0Lp,
-        # ma1,
-        # upperband1,
+        ma1,
+        upperband1,
         lowerband1,
-        ma1Lp,
+        # ma1Lp,
         # ma2,
         # upperband2,
-        lowerband2,
-        ma2Lp,
+        # lowerband2,
+        # ma2Lp,
         #  ma3,
         # upperband3,
-        lowerband3,
-        ma3Lp,
+        # lowerband3,
+        # ma3Lp,
         #      fit,
         # lows,
         # minTrend, intTrend,majTrend,
-        lowerband4,
-        ma4Lp,
-        dfLowLp,
+        # lowerband4,
+        # ma4Lp,
+        # dfLowLp,
 
     ]
 
@@ -1089,7 +1176,7 @@ def main(tickerName):
 
 
 
-    plotVerticalSubs(trace, title=tickerName,lastIdx=len(df), avgList = avgList, others=[inverse,M54, M18, M9, W20, W10],anchorPoint=anchorPoint)
+    plotVerticalSubs('hurst_'+tickerName+'.html',trace, title=tickerName,lastIdx=len(df), avgList = avgList, others=[inverse,M54, M18, M9, W20, W10],anchorPoint=anchorPoint)
 
     # print(perhapsM54)
     # print(perhapsM18)
@@ -1110,32 +1197,52 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    tickerList = ['^GSPC','^DJI','^IXIC','^NYA','^XAX','^BUK100P','^RUT','^VIX','^FTSE',
-                  '^GDAXI','^FCHI','^STOXX50E','^N100','^BFX','IMOEX.ME','^N225','^HSI','000001.SS','^STI',
-                  '^AXJO','^AORD','^BSESN','^JKSE','^KLSE','^NZ50','^KS11','^TWII','^GSPTSE','^BVSP','^MXX ',
-                  '^IPSA','^MERV','^TA125.TA','^CASE30','^JN0U.JO']
+    tickerList = ['BA','EURUSD',
+        '^GSPC','^DJI','^IXIC','^NYA','^XAX','^BUK100P','^RUT','^VIX',
+                  # '^FTSE',
+                  '^GDAXI','^FCHI',
+                  # '^STOXX50E', #######
+                  '^N100','^BFX',
+                  # 'IMOEX.ME',
+                  '^N225',
+        # '^HSI',
+        '000001.SS',
+        # '^STI',
+                  '^AXJO','^AORD','^BSESN','^JKSE',
+        # '^KLSE',
+        '^NZ50','^KS11','^TWII','^GSPTSE','^BVSP',
+        # '^MXX ',
+                  '^IPSA','^MERV','^TA125.TA',
+        # '^CASE30',
+    '^JN0U.JO']
 
-    tickerList = ['^NYA','^XAX','^BUK100P','^RUT','^GDAXI','^FCHI']
+    # tickerList = ['^NYA','^XAX','^BUK100P','^RUT','^GDAXI','^FCHI']
+
+    # tickerList = ['BA']
+    # tickerList = ['^NYA']
+    # tickerList = ['^IPSA']
+    # tickerList = ['EURUSD']
 
     for each in tickerList:
         print()
         print('Working on Ticker:', each)
-        main(each)
+        # print(main(each))
         try:
             main(each)
         except Exception as e:
             print('*** Ticker', each, 'failed ***')
             print(e)
             print()
-
-        exit()
+        #
+        # exit()
 
     end = time.time()
 
-    timeTaken = (end - start)/1000
+    timeTaken = (end - start)
     print('time taken:',timeTaken)
 
-
+    print(GAUGE)
+    print(np.mean(GAUGE))
 
 
     #region: test remove extras

@@ -5,7 +5,7 @@ startTime = time.time()
 if __name__ == '__main__':
 
     df = pd.read_excel('EURUSD Weekly Data for Swing Indicator.xlsx')
-    # df = df[:-118]
+    df = df[:-118]
     print(len(df))
     # df = pd.read_csv('EURUSD Weekly Data for Swing Indicator.csv')
 
@@ -153,6 +153,14 @@ if __name__ == '__main__':
         plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/2, scale=scale, name='2x1',color='deepskyblue'),
     ]
 
+    # time ret lines
+
+    pointFirst = float(trendLine2[trendLine2.date==firstDateInt].point)
+    pointLast = float(trendLine2[trendLine2.date==lastDateInt].point)
+    intTimeRets = plotTimeRets(firstDateInt,lastDateInt,
+                               maxHeight=max([pointFirst,pointLast])*1.05,
+                               minHeight =min([pointFirst,pointLast])*0.95, )
+
     # retracement lines
     minRetLines = []
     intRetLines = retracementLines(trendLine2[trendLine2.date==firstDateInt].point,trendLine2[trendLine2.date==lastDateInt].point,
@@ -230,7 +238,7 @@ if __name__ == '__main__':
                         # OHF, OLF,
                         intermediate, intermediateTops, intermediateBottoms,
                         intermediateUps, intermediateDowns
-                        ] + intGann + intRetLines
+                        ] + intGann + intRetLines + intTimeRets
     majorData = [
         insideBars, activeBars,
                     # OHF, OLF,
@@ -292,4 +300,4 @@ if __name__ == '__main__':
 
     endTime = time.time()
     elapsed = endTime-startTime
-    print("Operation took a total of %.3f milliseconds." %(elapsed))
+    print("Operation took a total of %.2f seconds." %(elapsed))

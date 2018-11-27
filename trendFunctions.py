@@ -79,6 +79,49 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
+def plotTimeRets(firstDate,lastDate,maxHeight,minHeight):
+
+    retPercentages = [0.25, 0.5, 0.75, 1]
+    timeRange = lastDate-firstDate
+    newDates =[]
+
+    for percent in retPercentages:
+        newDates.append(datetime.date(percent*timeRange + lastDate))
+
+    traces = []
+    color = 'brown'
+    width = 1
+    dash = 'dash'  # 'dot', 'dashdot'
+
+
+    for idx in range(len(newDates)):
+        showLegend=False
+        if idx == 0: showLegend=True
+
+        thisLine= Scatter(name='Time Levels', x=[newDates[idx],newDates[idx]], y=[minHeight,maxHeight],
+                      mode='lines+text',
+                      line=dict(color=color,
+                                width=width,
+                                dash=dash
+                                ),
+                      # marker=dict(symbol='circle'),
+                      hoverinfo='x', #'none'
+                          hovertext='%.2f'%(retPercentages[idx] * 100) + '%',
+
+                     legendgroup='Time',
+                          showlegend=showLegend,
+                          textposition='top left',
+                          textfont=dict(color=color, family='Gravitas One'),
+                          text=['','  %i'%(retPercentages[idx] * 100) + '%']
+                          )
+
+
+        traces.append(thisLine)
+
+    return traces
+
+    exit()
+
 def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, ratio=1,scale=1,name = '1x1',color='navy'):
 
 
@@ -122,7 +165,6 @@ def retracementLines(firstPoint,lastPoint,x):
     firstPoint = temp
 
     trendRange = lastPoint - firstPoint
-
 
     levels = []
 

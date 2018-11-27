@@ -5,7 +5,7 @@ startTime = time.time()
 if __name__ == '__main__':
 
     df = pd.read_excel('EURUSD Weekly Data for Swing Indicator.xlsx')
-    df = df[:-78]
+    # df = df[:-118]
     print(len(df))
     # df = pd.read_csv('EURUSD Weekly Data for Swing Indicator.csv')
 
@@ -155,7 +155,8 @@ if __name__ == '__main__':
 
     # retracement lines
     minRetLines = []
-    intRetLines = []
+    intRetLines = retracementLines(trendLine2[trendLine2.date==firstDateInt].point,trendLine2[trendLine2.date==lastDateInt].point,
+                                   [firstDateInt,df.iloc[-1].date])
     majRetLines = retracementLines(trendLine3[trendLine3.date==firstDateMaj].point,trendLine3[trendLine3.date==lastDateMaj].point,
                                    [firstDateMaj,df.iloc[-1].date])
 
@@ -210,14 +211,14 @@ if __name__ == '__main__':
                hoverinfo='none',
                )
     # plot minor trendline points and lines
-    minor, minorTops, minorBottoms = plotTrendlines(trendLine1,minorStuff,name='Minor', color='grey',width=2)
+    minor, minorTops, minorBottoms = plotTrendlines(trendLine1,minorStuff,name='Minor', color='grey',width=4)
 
     # plot intermediate trendline points and lines
     intermediate, intermediateTops, intermediateBottoms = plotTrendlines(trendLine2, intermediateStuff,
-                                                                         name='Intermediate', color='#000080', width=2)
+                                                                         name='Intermediate', color='#000080', width=4)
 
     # plot major trendline points and lines
-    major, majorTops, majorBottoms = plotTrendlines(trendLine3, majorStuff, name='Major', color='black', width=2)
+    major, majorTops, majorBottoms = plotTrendlines(trendLine3, majorStuff, name='Major', color='black', width=4)
 
 
     minorData = [insideBars, activeBars,
@@ -229,7 +230,7 @@ if __name__ == '__main__':
                         # OHF, OLF,
                         intermediate, intermediateTops, intermediateBottoms,
                         intermediateUps, intermediateDowns
-                        ] + intGann
+                        ] + intGann + intRetLines
     majorData = [
         insideBars, activeBars,
                     # OHF, OLF,

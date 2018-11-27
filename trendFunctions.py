@@ -96,7 +96,7 @@ def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, rati
                    line=dict(
                        color=color,
                         width=2,
-                        dash='dash',
+                        dash='solid',
 
                              ),
                    hoverinfo='none',
@@ -114,29 +114,34 @@ def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, rati
 
 
 def retracementLines(firstPoint,lastPoint,x):
-
     lastPoint = lastPoint.values[0]
     firstPoint = firstPoint.values[0]
 
+    temp = lastPoint
+    lastPoint = firstPoint
+    firstPoint = temp
+
     trendRange = lastPoint - firstPoint
-    print(firstPoint)
-    print(lastPoint)
-    print(trendRange)
-    # exit()
+
 
     levels = []
 
-    if trendRange > 0: #uptrend
-        retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
+    # if trendRange > 0: #uptrend
+    #     retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
+    #
+    #     for percent in retracementPercentages:
+    #         levels.append(percent*trendRange + firstPoint)
+    #
+    # else:
+    #     retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
+    #
+    #     for percent in retracementPercentages:
+    #         levels.append(percent*trendRange + firstPoint) # trendrange is negative here
 
-        for percent in retracementPercentages:
-            levels.append(percent*trendRange + firstPoint)
+    retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
 
-    else:
-        retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
-
-        for percent in retracementPercentages:
-            levels.append(percent*trendRange + firstPoint) # trendrange is negative here
+    for percent in retracementPercentages:
+        levels.append(percent * trendRange + firstPoint)
 
     traces = []
     # annot = []
@@ -156,8 +161,8 @@ def retracementLines(firstPoint,lastPoint,x):
                       hoverinfo='y', #'none'
                      legendgroup='retracement',
                         textposition='middle right',
-                        textfont=dict(color=color),
-                        text=['', '%.1f' % (retracementPercentages[0] * 100) + '%']
+                        textfont=dict(color=color, family='Gravitas One'),
+                        text=['', '   %.1f' % (retracementPercentages[0] * 100) + '%']
 
                       )
     # annot.append(dict(x=x[-1],y=levels[0],text=str(retracementPercentages[0]),showarrow=False,ax=0,ay=-30,font=dict(color=color)))
@@ -175,8 +180,8 @@ def retracementLines(firstPoint,lastPoint,x):
                      legendgroup='retracement',
                           showlegend=False,
                           textposition='middle right',
-                          textfont=dict(color=color),
-                          text=['','%.1f'%(retracementPercentages[idx] * 100) + '%']
+                          textfont=dict(color=color, family='Gravitas One'),
+                          text=['','  %.1f'%(retracementPercentages[idx] * 100) + '%']
                           )
 
         # annot.append(dict(x=x[-1], y=levels[idx], text=str(retracementPercentages[idx]), showarrow=False, ax=0, ay=-30,font=dict(color=color)))
@@ -392,12 +397,6 @@ def trendProjector(topsAndBottoms, todaysDate):
     figLow = Figure(data=Lproj_bars, layout=layout)
 
     ganttLow = ff.create_gantt(ganttListLow,showgrid_x=True,showgrid_y=True,height=900,width=1200)
-
-
-    print(len(HHstart))
-    print(len(HHend))
-    print(len(HHdiff))
-
 
     # tables for diagnostics
     HH_table = Figure(data=[Table(header=dict(values=['Start','End','No. of days']),
@@ -666,8 +665,8 @@ def trendFinder(stuff):
             # firstDate = trendUp.iloc[i].date
             break
 
-    print('first:', firstDate)
-    print('last:', lastDate)
+    # print('first:', firstDate)
+    # print('last:', lastDate)
 
     return upsTrace, downsTrace, topsAndBottoms, stringTrend, firstDate, lastDate, currentTrend
 

@@ -79,6 +79,82 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
+
+
+def signalBots(df, bigBots):
+    df['midpoint'] = (df.high + df.low) / 2
+
+    mask4 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close) & (df.close < df.open) & (
+                df.close < df.midpoint)
+    mask3 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close) & (df.close < df.midpoint)
+    mask2 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close) & (df.close < df.open)
+    mask1 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close)
+
+    level4 = bigBots.merge(df[mask4], on='date')
+    level3 = bigBots.merge(df[mask3], on='date')
+    level2 = bigBots.merge(df[mask2], on='date')
+    level1 = bigBots.merge(df[mask1], on='date')
+
+    allLevels = [level1, level2, level3, level4]
+
+    traces = []
+    color = 'darkred'
+
+    for i in range(len(allLevels)):
+        # print(len(allLevels[i]))
+
+        thisTrace = Scatter(
+            x=allLevels[i].date,
+            y=allLevels[i].point,
+            name='Lvl %i Potential Signal Bottoms' % (i + 1),
+            mode='markers',
+            marker=dict(color=color, size=2 + (3 * i)),
+            hoverinfo='none',
+            legendgroup='Signal Bottoms',
+            showlegend=True,
+        )
+        traces.append(thisTrace)
+
+    return traces
+
+def signalTops(df, bigTops):
+
+
+    df['midpoint'] = (df.high + df.low)/2
+
+    mask4 = (df.high > df.shift(1).high) & (df.close< df.shift(1).close) & (df.close<df.open) & (df.close < df.midpoint)
+    mask3 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close) & (df.close < df.midpoint)
+    mask2 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close) & (df.close < df.open)
+    mask1 = (df.high > df.shift(1).high) & (df.close < df.shift(1).close)
+
+    level4 = bigTops.merge(df[mask4],on='date')
+    level3 = bigTops.merge(df[mask3],on='date')
+    level2 = bigTops.merge(df[mask2],on='date')
+    level1 = bigTops.merge(df[mask1],on='date')
+
+    allLevels = [level1,level2,level3,level4]
+    traces = []
+    color = 'red'
+
+    for i in range(len(allLevels)):
+
+        # print(len(allLevels[i]))
+
+        thisTrace = Scatter(
+            x = allLevels[i].date,
+            y = allLevels[i].point,
+            name='Lvl %i Potential Signal Tops' %(i+1),
+            mode='markers',
+            marker=dict(color=color,size=2+(3*i)),
+            hoverinfo='none',
+            legendgroup='Signal Tops',
+            showlegend=True,
+        )
+        traces.append(thisTrace)
+
+    return traces
+
+
 def plotTimeRets(firstDate,lastDate,maxHeight,minHeight):
 
     retPercentages = [0.25, 0.5, 0.75, 1]
@@ -709,6 +785,46 @@ def trendFinder(stuff):
 
     # print('first:', firstDate)
     # print('last:', lastDate)
+
+    topsAndBottoms['trendUp'] = trendUp.trendUp > 0
+    topsAndBottoms['bigTop'] = False
+    topsAndBottoms['bigBot'] = False
+
+    bigTops = []
+    bigBots = []
+    pointList = []
+    pointDict = {}
+    currTrendUp = False
+
+    for idx,row in topsAndBottoms.iterrows():
+        if row.trendUp!=currTrendUp:
+            if currTrendUp: #looking for tops
+                bigTops.append(pointDict[max(pointList)])
+            else: # looking for bottoms
+                bigBots.append(pointDict[min(pointList)])
+
+            #reset
+            pointList=[]
+            pointDict={}
+            currTrendUp = row.trendUp
+
+        if row.trendUp:
+            if row.top:
+                pointList.append(row.point)
+                pointDict[row.point]=idx
+
+        else:
+            if row.bottom:
+                pointList.append(row.point)
+                pointDict[row.point] = idx
+
+    for i in bigTops:
+        topsAndBottoms.ix[i,'bigTop'] = True
+
+    for i in bigBots:
+        topsAndBottoms.ix[i,'bigBot'] = True
+
+    # for idx,row
 
     return upsTrace, downsTrace, topsAndBottoms, stringTrend, firstDate, lastDate, currentTrend
 

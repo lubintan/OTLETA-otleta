@@ -25,9 +25,6 @@ if __name__ == '__main__':
     lengthDf = len(df)
     df = pd.DataFrame(df.iloc[0:]).reset_index(drop=True)
 
-    # print(df)
-
-
 #inside bars (fully ignore for trend line calculation)
 #region: INSIDE BARS
 
@@ -135,6 +132,12 @@ if __name__ == '__main__':
     # print(df)
     # exit()
 
+    bigTopListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigTop==True]
+    bigBotListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigBot == True]
+
+    bigTops = Scatter(mode='markers',marker=dict(color='orange',size=10),x=bigTopListInt.date,y=bigTopListInt.point)
+    bigBots = Scatter(mode='markers', marker=dict(color='black', size=10), x=bigBotListInt.date, y=bigBotListInt.point)
+
     #Gann Angles
     x0_date = lastDateInt
     x0_idx = df[df.date == lastDateInt].index[0]
@@ -167,6 +170,10 @@ if __name__ == '__main__':
                                    [firstDateInt,df.iloc[-1].date])
     majRetLines = retracementLines(trendLine3[trendLine3.date==firstDateMaj].point,trendLine3[trendLine3.date==lastDateMaj].point,
                                    [firstDateMaj,df.iloc[-1].date])
+
+    #signal tops
+    intSignalTops = signalTops(df,bigTops=bigTopListInt)
+    intSignalBots = signalBots(df,bigBots=bigBotListInt)
 
     # projections
     # minorHL_html = trendProjector(minorTopsBottoms)
@@ -238,7 +245,9 @@ if __name__ == '__main__':
                         # OHF, OLF,
                         intermediate, intermediateTops, intermediateBottoms,
                         intermediateUps, intermediateDowns
-                        ] + intGann + intRetLines + intTimeRets
+                        ] + intGann + intRetLines + \
+                       intTimeRets + intSignalTops + intSignalBots
+                       # + [bigTops,bigBots]
     majorData = [
         insideBars, activeBars,
                     # OHF, OLF,

@@ -79,6 +79,40 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
+def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, ratio=1,scale=1,name = '1x1',color='navy'):
+
+
+
+    m = ratio * scale
+
+    if not trendUp: m *= -1
+    c = y0 - (m*x0_idx)
+    yLast = (xLast_idx*m) + c
+
+
+    line = Scatter(name=name + ' Gann',
+                   x=[x0_date,xLast_date], y=[y0,yLast],
+                   mode='lines+text',
+                   line=dict(
+                       color=color,
+                        width=2,
+                        dash='dash',
+
+                             ),
+                   hoverinfo='none',
+                   showlegend=True,
+                   opacity=0.7,
+                   text=['','   '+name],
+                   textfont=dict(
+                       color = color,
+                       family='Gravitas One',
+                   ),
+                   textposition='middle right',
+                   )
+
+    return line
+
+
 def retracementLines(firstPoint,lastPoint,x):
 
     lastPoint = lastPoint.values[0]
@@ -305,7 +339,7 @@ def trendProjector(topsAndBottoms, todaysDate):
 
     fig = Figure(data=Hproj_bars, layout=layout)
 
-    gantt = ff.create_gantt(ganttList,showgrid_x=True,showgrid_y=True,height=900,width=1200)
+    # gantt = ff.create_gantt(ganttList,showgrid_x=True,showgrid_y=True,height=900,width=1200)
 
 
 
@@ -401,31 +435,7 @@ def trendProjector(topsAndBottoms, todaysDate):
                                                                   'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
                                        'displayModeBar': False
                                        }),\
-           plotly.offline.plot(figure_or_data=gantt,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
            plotly.offline.plot(figure_or_data=figLow,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
-           plotly.offline.plot(figure_or_data=ganttLow,
                                show_link=False,
                                output_type='div',
                                include_plotlyjs=False,
@@ -486,6 +496,31 @@ def trendProjector(topsAndBottoms, todaysDate):
                                        'displayModeBar': False
                                        })
 
+# plotly.offline.plot(figure_or_data=gantt,
+           #                     show_link=False,
+           #                     output_type='div',
+           #                     include_plotlyjs=False,
+           #                     # filename='minorHLData.html',
+           #                     auto_open=False,
+           #                     config={'displaylogo': False,
+           #                             'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+           #                                                        'zoomOut2d',
+           #                                                        'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+           #                             'displayModeBar': False
+           #                             }),\
+    # plotly.offline.plot(figure_or_data=ganttLow,
+    #                     show_link=False,
+    #                     output_type='div',
+    #                     include_plotlyjs=False,
+    #                     # filename='minorHLData.html',
+    #                     auto_open=False,
+    #                     config={'displaylogo': False,
+    #                             'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+    #                                                        'zoomOut2d',
+    #                                                        'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+    #                             'displayModeBar': False
+    #                             }), \
+ # \
 
 def trendFinder(stuff):
     topsAndBottoms = stuff['topsAndBottoms']
@@ -495,6 +530,7 @@ def trendFinder(stuff):
 
     trendUp = pd.DataFrame()
     trendUp['date'] = topsAndBottoms.date
+    trendUp['point'] = topsAndBottoms.point
     # topsAndBottoms['trendUp'] = False
 
     # True if: is a top and breaks previous top,
@@ -520,16 +556,16 @@ def trendFinder(stuff):
             upTrendList.append(False)
             continue
         if row.top:
-            if row.point > topsAndBottoms.iloc[index-2].point:
+            if row.point > topsAndBottoms.iloc[index-2].point: #broken previous top
                 upTrendList.append(True)
             else:
+                #did not break previous top
                 upTrendList.append(upTrendList[index-1])
-
         else: #if row.bottom
             if row.point >= topsAndBottoms.iloc[index-2].point:
                 upTrendList.append(upTrendList[index - 1])
             else:
-                upTrendList.append(False)
+                upTrendList.append(False) #broke previous bottom
     # map(lambda x: x * 2, l)
     # upTrendList =
     trendUp.reset_index(drop=True, inplace=True)
@@ -579,18 +615,61 @@ def trendFinder(stuff):
     for i in range(len(trendUp)-1,-1,-1):
 
         if (trendUp.iloc[i].trendUp != currentTrend) and not prevTrend:
-            lastDate = trendUp.iloc[i].date
+            if trendUp.iloc[i].trendUp > 0: # trending up
+                topPoints = []
+                topDict = {}
+                for x in range(i,-1,-2):
+                    if trendUp.iloc[x].trendUp < 0: break
+                    topPoints.append(trendUp.iloc[x].point)
+                    topDict[trendUp.iloc[x].point] = trendUp.iloc[x].date
+
+                lastDate = topDict[max(topPoints)]
+
+
+            elif trendUp.iloc[i].trendUp < 0: # trending down
+                botPoints = []
+                botDict = {}
+                for x in range(i,-1,-2):
+                    if trendUp.iloc[x].trendUp > 0: break
+                    botPoints.append(trendUp.iloc[x].point)
+                    botDict[trendUp.iloc[x].point] = trendUp.iloc[x].date
+                lastDate = botDict[min(botPoints)]
+
+
             prevTrend = True
             continue
 
         if (trendUp.iloc[i].trendUp == currentTrend) and prevTrend:
-            firstDate = trendUp.iloc[i+1].date
+
+            if trendUp.iloc[i].trendUp > 0:  # trending up
+                topPoints = []
+                topDict = {}
+                for x in range(i, -1, -2):
+                    if trendUp.iloc[x].trendUp < 0: break
+                    topPoints.append(trendUp.iloc[x].point)
+                    topDict[trendUp.iloc[x].point] = trendUp.iloc[x].date
+
+                firstDate = topDict[max(topPoints)]
+
+
+            elif trendUp.iloc[i].trendUp < 0:  # trending down
+                botPoints = []
+                botDict = {}
+                for x in range(i, -1, -2):
+                    if trendUp.iloc[x].trendUp > 0: break
+                    botPoints.append(trendUp.iloc[x].point)
+                    botDict[trendUp.iloc[x].point] = trendUp.iloc[x].date
+                firstDate = botDict[min(botPoints)]
+
+
+
+            # firstDate = trendUp.iloc[i].date
             break
 
     print('first:', firstDate)
     print('last:', lastDate)
 
-    return upsTrace, downsTrace, topsAndBottoms, stringTrend, firstDate, lastDate
+    return upsTrace, downsTrace, topsAndBottoms, stringTrend, firstDate, lastDate, currentTrend
 
 
 def plotTopBotHist(stuff):

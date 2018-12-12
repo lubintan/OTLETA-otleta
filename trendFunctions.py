@@ -79,7 +79,132 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
+def getClusters(levelList, startX, endX, minClusters=4,):
+    #1. Method: find min spacing
+    #2. start from biggest range/spacing one.
+    #3. check against the rest.
+    #4. every one that has, take it out. From checker, and checkee. Add to cluster list.
+    #5. keep going until 2nd last guy
+    #6. increase spacing and repeat 2-4 until min clusters met
 
+    rangeList = []
+    rangeDict = {}
+
+    #region:find min spacing
+    for each in levelList:
+        ranger = max(each)-min(each)
+        rangeList.append(ranger)
+        rangeDict[ranger] = each
+
+    minList = rangeDict[min(rangeList)]
+
+    minSpacing = 1
+
+    for i in range(len(minList)-1):
+        spacing = abs(minList[i]-minList[i+1])/4.0
+        if spacing<minSpacing: minSpacing=spacing
+    #endregion
+
+    rangeList.sort()
+    rangeList.reverse()
+
+    clusterDict = {}
+
+    #main body of this function
+    while len(clusterDict) < minClusters:
+        print(minSpacing, len(clusterDict))
+        for a in range(len(rangeList)-1):
+            mainList = rangeDict[rangeList[a]]
+            mainList.sort()
+
+            for mainEl in mainList:
+
+                for b in range(a + 1, len(rangeList)):
+                    subList = rangeDict[rangeList[b]]
+                    toRemove = []
+                    for subEl in subList:
+                        diff = abs(mainEl - subEl)
+
+                        if diff < minSpacing:
+                            if mainEl in clusterDict:
+                                clusterDict[mainEl].append(subEl)
+                            else:
+                                clusterDict[mainEl] = [subEl]
+                                toRemove.append(subEl)
+
+                    for removeEl in toRemove:
+                        subList.remove(removeEl)
+
+        keys = list(clusterDict.keys())
+        keys.sort()
+        keys.reverse()
+
+        # if clusters are still too close, consolidate
+        for i in range(len(keys)-1):
+            dist = abs(keys[i]-keys[i+1])
+
+            if dist<=minSpacing:
+                clusterDict[keys[i+1]].append(keys[i])
+                for el in clusterDict[keys[i]]:
+                    clusterDict[keys[i+1]].append(el)
+                del clusterDict[keys[i]]
+
+        if minSpacing > max(rangeList):
+            print('COULD NOT FIND PRICE CLUSTERS')
+            return
+        minSpacing *= 1.5 #increase minSpacing to increase num of clusters when not enough clusters
+
+    name = 'jack'
+    color = 'crimson'
+    width = 3
+    dash = 'solid'
+
+    newClusterDict = {}
+
+    for eachKey in clusterDict.keys():
+        this = clusterDict[eachKey]
+
+        avg = (eachKey + sum(this))/(len(this)+1)
+
+        newClusterDict[avg] = len(this)+1
+
+    traces = []
+    for eachMain in newClusterDict.keys():
+        thisLine = Scatter(name=name, x=[startX,endX], y=[eachMain, eachMain],
+                           mode='lines',
+                           opacity=0.7,
+                           line=dict(color=color,
+                                     width=newClusterDict[eachMain]*2,
+                                     dash=dash
+                                     ),
+                           # marker=dict(symbol='circle'),
+                           hoverinfo='none',  # 'none'
+                           legendgroup=name,
+                           showlegend=True,
+                           # textposition='middle right',
+                           # textfont=dict(color=color, family='Gravitas One'),
+                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           )
+        traces.append(thisLine)
+
+    return traces
+
+
+def getHps(y):
+
+    hpMask = (
+        (y.shift(-1).high <= y.high)
+        & (y.shift(1).high <= y.high)
+    )
+    return y[hpMask]
+
+def getLps(y):
+
+    lpMask = (
+        (y.shift(-1).low >= y.low)
+        & (y.shift(1).low >= y.low)
+    )
+    return y[lpMask]
 
 def signalBots(df, bigBots):
     df['midpoint'] = (df.high + df.low) / 2
@@ -153,7 +278,6 @@ def signalTops(df, bigTops):
         traces.append(thisTrace)
 
     return traces
-
 
 def plotTimeRets(firstDate,lastDate,maxHeight,minHeight):
 
@@ -231,10 +355,9 @@ def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, rati
 
     return line
 
-
-def retracementLines(firstPoint,lastPoint,x):
-    lastPoint = lastPoint.values[0]
-    firstPoint = firstPoint.values[0]
+def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080'):
+    # lastPoint = lastPoint.values[0]
+    # firstPoint = firstPoint.valuesalues[0]
 
     temp = lastPoint
     lastPoint = firstPoint
@@ -244,19 +367,13 @@ def retracementLines(firstPoint,lastPoint,x):
 
     levels = []
 
-    # if trendRange > 0: #uptrend
-    #     retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
-    #
-    #     for percent in retracementPercentages:
-    #         levels.append(percent*trendRange + firstPoint)
-    #
-    # else:
-    #     retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
-    #
-    #     for percent in retracementPercentages:
-    #         levels.append(percent*trendRange + firstPoint) # trendrange is negative here
+    retracementPercentages = [.25,.33,.382,.50,.618,.66,.75]
 
-    retracementPercentages = [0, 0.25, 0.5, 0.75, 0.236, 0.382, 0.618, 1]
+    if trendRange < 0: #uptrend
+        retracementPercentages += [.10, .20, .30, .40, .60, .70, .80, .90, .125, .375, .625, .75, .875]
+
+    else:
+        retracementPercentages += [1,1.5]
 
     for percent in retracementPercentages:
         levels.append(percent * trendRange + firstPoint)
@@ -264,20 +381,20 @@ def retracementLines(firstPoint,lastPoint,x):
     traces = []
     # annot = []
 
-    color = '#000080'
+    # color = '#000080'
     width = 1
-    dash = 'dash' #'dot', 'dashdot'
+    dash = 'longdashdot' #'dot', 'dashdot'
 
 
-    firstLine = Scatter(name='Retracement', x=x, y=[levels[0],levels[0]],
+    firstLine = Scatter(name=name, x=x, y=[levels[0],levels[0]],
                       mode='lines+text',
                       line=dict(color=color,
                                 width=width,
                                 dash=dash
                                 ),
                       # marker=dict(symbol='circle'),
-                      hoverinfo='y', #'none'
-                     legendgroup='retracement',
+                      hoverinfo='none',
+                     legendgroup=name,
                         textposition='middle right',
                         textfont=dict(color=color, family='Gravitas One'),
                         text=['', '   %.1f' % (retracementPercentages[0] * 100) + '%']
@@ -287,15 +404,15 @@ def retracementLines(firstPoint,lastPoint,x):
     traces.append(firstLine)
 
     for idx in range(1,len(levels)):
-        thisLine= Scatter(name='Retracement', x=x, y=[levels[idx],levels[idx]],
+        thisLine= Scatter(name=name, x=x, y=[levels[idx],levels[idx]],
                       mode='lines+text',
                       line=dict(color=color,
                                 width=width,
                                 dash=dash
                                 ),
                       # marker=dict(symbol='circle'),
-                      hoverinfo='y', #'none'
-                     legendgroup='retracement',
+                      hoverinfo='none', #'none'
+                     legendgroup=name,
                           showlegend=False,
                           textposition='middle right',
                           textfont=dict(color=color, family='Gravitas One'),
@@ -305,7 +422,7 @@ def retracementLines(firstPoint,lastPoint,x):
         # annot.append(dict(x=x[-1], y=levels[idx], text=str(retracementPercentages[idx]), showarrow=False, ax=0, ay=-30,font=dict(color=color)))
         traces.append(thisLine)
 
-    return traces
+    return traces, levels
 
 def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     if not (
@@ -639,10 +756,14 @@ def trendProjector(topsAndBottoms, todaysDate):
     #                             }), \
  # \
 
-def trendFinder(stuff):
-    topsAndBottoms = stuff['topsAndBottoms']
+def trendFinder(stuff,barHeight=0.03,upColor = 'green',downColor='red'):
 
-    barHeight = 0.03
+    if 'topsAndBottoms' in stuff.keys():
+        topsAndBottoms = stuff['topsAndBottoms']
+    else:
+        topsAndBottoms = stuff
+
+    # barHeight = 0.03
     # barBias =
 
     trendUp = pd.DataFrame()
@@ -699,12 +820,14 @@ def trendFinder(stuff):
     # print(ups)
     # print(downs)
 
-    upsTrace = Bar(name='Trend Up', x=ups.date, y=ups.trendUp, marker=dict(color='green'),
+    upsTrace = Bar(name='Trend Up', x=ups.date, y=ups.trendUp, marker=dict(color=upColor),
                    text='up', textposition='auto', opacity=0.7,
-                   showlegend=False, hoverinfo="text")
-    downsTrace = Bar(name='Trend Down', x=downs.date, y=downs.trendUp, marker=dict(color='red'),
+                   # showlegend=False,
+                   hoverinfo="text")
+    downsTrace = Bar(name='Trend Down', x=downs.date, y=downs.trendUp, marker=dict(color=downColor),
                      text='down', textposition='auto', opacity=0.7,
-                     showlegend=False, hoverinfo='text')
+                     # showlegend=False,
+                     hoverinfo='text')
 
     # topsAndBottomsTrace,tops,bots = plotTrendlines(topsAndBottoms,stuff,name='Test',color='blue', width=2)
 
@@ -726,6 +849,8 @@ def trendFinder(stuff):
     else:
         stringTrend += 'DOWN'
 
+    lastDate = None
+    firstDate = None
 
     currentTrend = trendUp.iloc[-1].trendUp
     prevTrend = False
@@ -974,7 +1099,7 @@ def plotTrendlines(trendLine, stuff, name, color, width, dash=None):
                              dash=dash
                              ),
                    hoverinfo='none',
-                   showlegend=False,
+                   showlegend=True,
                    )
 
     tops = Scatter(name=name + ' Tops', x=stuff['tops'].date, y=stuff['tops'].point,

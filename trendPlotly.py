@@ -1,11 +1,12 @@
 from trendFunctions import *
+from hurstAnalysis import *
 
 startTime = time.time()
 
 if __name__ == '__main__':
 
     df = pd.read_excel('EURUSD Weekly Data for Swing Indicator.xlsx')
-    df = df[:-118]
+    df = df[:-50]
     print(len(df))
     # df = pd.read_csv('EURUSD Weekly Data for Swing Indicator.csv')
 
@@ -16,6 +17,10 @@ if __name__ == '__main__':
     # Convert Date Format
     df.columns = ['date','close','open','high','low']
     df['date'] = pd.to_datetime(df['date'])
+
+
+    endpoint = df.iloc[-1].date + timedelta(days=(
+        (df.iloc[-1].date - df.iloc[0].date).days)*0.30)
 
     # df = groupByMonths(df)
 
@@ -116,6 +121,19 @@ if __name__ == '__main__':
     intermediateStuff = getTrendTopsAndBottoms(trendLine2,df)
     majorStuff = getTrendTopsAndBottoms(trendLine3,df)
 
+    # get little highs and lows
+    lps = getLps(df)
+    hps = getHps(df)
+
+    lpsLows = lps[['date','low']].copy()
+    hpsHighs = hps[['date','high']].copy()
+
+    lpshps=pd.concat([lpsLows,hpsHighs],sort=True)
+    lpshps = lpshps.sort_values(by=['date'])
+
+    lps = Scatter(mode='markers',marker=dict(color='navy',size=10),x=lps.date,y=lps.low)
+    hps = Scatter(mode='markers', marker=dict(color='navy', size=10), x=hps.date, y=hps.high)
+
     # plot H L data
     minorHL_html = plotTopBotHist(minorStuff)
     intermediateHL_html = plotTopBotHist(intermediateStuff)
@@ -124,37 +142,98 @@ if __name__ == '__main__':
     # trends
     minorUps, minorDowns, minorTopsBottoms, stringTrendMin, firstDateMin, lastDateMin, currTrendMin = trendFinder(minorStuff)
     intermediateUps, intermediateDowns, intermediateTopsBottoms, stringTrendInt, firstDateInt, lastDateInt, currTrendInt = trendFinder(intermediateStuff)
-    majorUps, majorDowns, majorTopsBottoms, stringTrendMaj, firstDateMaj, lastDateMaj, currTrendMaj = trendFinder(majorStuff)
+    
+    
+    majorUps, majorDowns, majorTopsBottoms, stringTrendMaj, firstDateMaj, lastDateMaj, currTrendMaj = trendFinder(majorStuff,barHeight=0.03)
+    bigTopBotsMaj = majorTopsBottoms[(majorTopsBottoms.bigTop==True) | (majorTopsBottoms.bigBot == True) ]
 
-    # print(trendLine2)
-    # print(trendLine2[trendLine2.date==firstDateInt].point.index)
-    # print(trendLine2[trendLine2.date==firstDateInt].point)
-    # print(df)
-    # exit()
+
+    #derivative trends
+    
+    firstDateList = []
+    lastDateList = []
+    bigTopBotsMajDrvd = bigTopBotsMaj
+
+    firstDateMajDrvdFinal = None
+    lastDateMajDrvdFinal = None
+    
+    for counter in range(11):
+        majorUpsDrvd, majorDownsDrvd, majorTopsBottomsDrvd, stringTrendMajDrvd, firstDateMajDrvd, lastDateMajDrvd, currTrendMajDrvd = trendFinder(
+            bigTopBotsMajDrvd, barHeight=0.03, upColor='navy', downColor='grey')
+        
+        if (firstDateMajDrvd!=None) and (lastDateMajDrvd!=None):
+            firstDateList.append(firstDateMajDrvd)
+            lastDateList.append(lastDateMajDrvd)
+            bigTopBotsMajDrvd = majorTopsBottomsDrvd[(majorTopsBottomsDrvd.bigTop == True) | (majorTopsBottomsDrvd.bigBot == True)]
+        else:
+            date1 = df.iloc[df.high.idxmax].date
+            date2 = df.iloc[df.low.idxmin].date
+
+            if (date1 - date2).days > 0:
+                firstDateMajDrvdFinal = date2
+                lastDateMajDrvdFinal = date1
+            else:
+                firstDateMajDrvdFinal = date1
+                lastDateMajDrvdFinal = date2
+            break
+            
+
+
+    # # #####
+    # bigTopBotsMaj2 = majorTopsBottoms2[(majorTopsBottoms2.bigTop==True) | (majorTopsBottoms2.bigBot == True) ]
+    # majorUps3, majorDowns3, majorTopsBottoms3, stringTrendMaj3, firstDateMaj3, lastDateMaj3, currTrendMaj3 = trendFinder(
+    #     bigTopBotsMaj2,barHeight=0.03,upColor='navy',downColor='grey')
+    # bigTopBotsMajLine2 = Scatter(name='big top bots line2', x=bigTopBotsMaj2.date, y=bigTopBotsMaj2.point, mode='lines')
+
+    # if (firstDateMaj3==None) or (lastDateMaj3==None):
+    #     date1 = df.iloc[df.high.idxmax].date
+    #     date2 = df.iloc[df.low.idxmin].date
+    # 
+    #     if (date1-date2).days >0:
+    #         firstDateMaj3 = date2
+    #         lastDateMaj3 = date1
+    #     else:
+    #         firstDateMaj3 = date1
+    #         lastDateMaj3 = date2
+
+
+
+
 
     bigTopListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigTop==True]
     bigBotListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigBot == True]
 
-    bigTops = Scatter(mode='markers',marker=dict(color='orange',size=10),x=bigTopListInt.date,y=bigTopListInt.point)
-    bigBots = Scatter(mode='markers', marker=dict(color='black', size=10), x=bigBotListInt.date, y=bigBotListInt.point)
+    # bigTopListMaj = majorTopsBottoms[majorTopsBottoms.bigTop==True]
+    # bigBotListMaj = majorTopsBottoms[majorTopsBottoms.bigBot == True]
+    # 
+    # bigTops = Scatter(mode='markers',marker=dict(color='orange',size=10),x=bigTopListMaj.date,y=bigTopListMaj.point)
+    # bigBots = Scatter(mode='markers', marker=dict(color='black', size=10), x=bigBotListMaj.date, y=bigBotListMaj.point)
+    # 
+    # bigTopListMaj2 = majorTopsBottoms2[majorTopsBottoms2.bigTop==True]
+    # bigBotListMaj2 = majorTopsBottoms2[majorTopsBottoms2.bigBot == True]
+    # 
+    # bigTops2 = Scatter(mode='markers',marker=dict(color='pink',size=10),x=bigTopListMaj2.date,y=bigTopListMaj2.point)
+    # bigBots2 = Scatter(mode='markers', marker=dict(color='purple', size=10), x=bigBotListMaj2.date, y=bigBotListMaj2.point)
 
-    #Gann Angles
-    x0_date = lastDateInt
-    x0_idx = df[df.date == lastDateInt].index[0]
-    xLast_date = df.iloc[-1].date
-    xLast_idx = len(df)-1
-    y0 = float(trendLine2[trendLine2.date == lastDateInt].point)
-    scale = 0.004
-    trendUp = currTrendInt > 0
-
-    intGann = [
-        plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp =trendUp,ratio=0,scale=1,name='Flat',color='grey'),
-        plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1, scale=scale, name='1x1',color='orange'),
-        plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=2, scale=scale, name='1x2',color='navy'),
-        plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=4, scale=scale, name='1x4',color='gold'),
-        plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/4, scale=scale, name='4x1',color='green'),
-        plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/2, scale=scale, name='2x1',color='deepskyblue'),
-    ]
+    #region:Gann Angles
+    
+    # x0_date = lastDateInt
+    # x0_idx = df[df.date == lastDateInt].index[0]
+    # xLast_date = df.iloc[-1].date
+    # xLast_idx = len(df)-1
+    # y0 = float(trendLine2[trendLine2.date == lastDateInt].point)
+    # scale = 0.004
+    # trendUp = currTrendInt > 0
+    # 
+    # intGann = [
+    #     plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp =trendUp,ratio=0,scale=1,name='Flat',color='grey'),
+    #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1, scale=scale, name='1x1',color='orange'),
+    #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=2, scale=scale, name='1x2',color='navy'),
+    #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=4, scale=scale, name='1x4',color='gold'),
+    #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/4, scale=scale, name='4x1',color='green'),
+    #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/2, scale=scale, name='2x1',color='deepskyblue'),
+    # ]
+    #endregion
 
     # time ret lines
 
@@ -165,15 +244,88 @@ if __name__ == '__main__':
                                minHeight =min([pointFirst,pointLast])*0.95, )
 
     # retracement lines
-    minRetLines = []
-    intRetLines = retracementLines(trendLine2[trendLine2.date==firstDateInt].point,trendLine2[trendLine2.date==lastDateInt].point,
-                                   [firstDateInt,df.iloc[-1].date])
-    majRetLines = retracementLines(trendLine3[trendLine3.date==firstDateMaj].point,trendLine3[trendLine3.date==lastDateMaj].point,
-                                   [firstDateMaj,df.iloc[-1].date])
+    retLevels = []
+    retLinesList = []
+    colorList = ['red', 'navy', 'olive', 'yellow', 'green', 'brown', 'purple', 'violet', 'khaki', 'silver', 'gold',
+                 'blue', 'sienna']
+    # region:little retracements
+    # 
+    # 
+    # 
+    # lastIndex = len(trendLine1) - 1
+    # numRetracements = 10
+    # minRetracements = []
+    # for i in range(numRetracements):
+    #     thisRet, thisRetLevels = retracementLines(trendLine1.iloc[lastIndex-i].point,trendLine1.iloc[lastIndex-i-1].point,
+    #                                [trendLine1.iloc[lastIndex-i].date, endpoint],
+    #                                name='mini-retrace '+str(i),
+    #                                color=colorList[i])
+    #     minRetracements += thisRet
+    #     retLevels.append(thisRetLevels)
+    #endregion
 
-    #signal tops
+    # region:maj retracements
+    #
+    #
+    majRetLines, majRetLevels = retracementLines(majorTopsBottoms.iloc[-2].point,majorTopsBottoms.iloc[-1].point,
+                              [majorTopsBottoms.iloc[-2].date, endpoint],
+                              name='Maj Retrace',
+                              color=colorList[0]
+                              )
+    retLevels.append(majRetLevels)
+    retLinesList.append(majRetLines)
+
+    for i in range(len(firstDateList)):
+
+
+        majTrendRetLines, majTrendRetLevels = retracementLines(trendLine3[trendLine3.date==firstDateList[i]].point.values[0],
+                                                               trendLine3[trendLine3.date==lastDateList[i]].point.values[0],
+                                       [firstDateList[i],endpoint],
+                                            name='Maj Trend Retrace %i'%(i),
+                                            color=colorList[(i+1)%(len(colorList))]
+                                            )
+
+        retLevels.append(majTrendRetLevels)
+        retLinesList.append(majTrendRetLines)
+
+    highPoint1 = df[df.date == firstDateMajDrvdFinal].high.values[0]
+    highPoint2 = df[df.date == lastDateMajDrvdFinal].high.values[0]
+    lowPoint1 = df[df.date == firstDateMajDrvdFinal].low.values[0]
+    lowPoint2 = df[df.date == lastDateMajDrvdFinal].low.values[0]
+    firstPoint = None
+    lastPoint = None
+
+
+    if highPoint1 > highPoint2:
+        firstPoint = highPoint1
+        lastPoint = lowPoint2
+    else:
+        firstPoint = lowPoint1
+        lastPoint = highPoint2
+
+
+    majTrendRetLines, majTrendRetLevels = retracementLines(
+        firstPoint,
+        lastPoint,
+        [firstDateMajDrvdFinal,
+         endpoint],
+        name='Maj Max Trend Retrace',
+        color=colorList[(len(firstDateList)+1) % (len(colorList))]
+        )
+
+    retLevels.append(majTrendRetLevels)
+    retLinesList.append(majTrendRetLines)
+
+    #endregion
+
+    #retracement clusters
+    retClusters = getClusters(retLevels,df.iloc[-1].date,endpoint)
+
+
+    #region:signal tops
     intSignalTops = signalTops(df,bigTops=bigTopListInt)
     intSignalBots = signalBots(df,bigBots=bigBotListInt)
+    #endregion
 
     # projections
     # minorHL_html = trendProjector(minorTopsBottoms)
@@ -193,7 +345,7 @@ if __name__ == '__main__':
                    )
 
     activeBars = Ohlc(name='Active Bars',x=dfIgnoreInsideBars.date,open=dfIgnoreInsideBars.open,close=dfIgnoreInsideBars.close,high=dfIgnoreInsideBars.high,low=dfIgnoreInsideBars.low,
-                    opacity=1,
+                    opacity=0.6,
                     line=dict(width=2.5),
                       # hoverinfo='none',
                     # hoverlabel=dict(namelengthsrc='none'),
@@ -233,7 +385,7 @@ if __name__ == '__main__':
                                                                          name='Intermediate', color='#000080', width=4)
 
     # plot major trendline points and lines
-    major, majorTops, majorBottoms = plotTrendlines(trendLine3, majorStuff, name='Major', color='black', width=4)
+    major, majorTops, majorBottoms = plotTrendlines(trendLine3, majorStuff, name='Major', color='navy', width=3)
 
 
     minorData = [insideBars, activeBars,
@@ -241,19 +393,52 @@ if __name__ == '__main__':
                  minor, minorTops, minorBottoms,
                  minorUps,minorDowns
                  ]
-    intermediateData = [insideBars, activeBars,
+    intermediateData = [
+    # insideBars,
+                        activeBars,
                         # OHF, OLF,
                         intermediate, intermediateTops, intermediateBottoms,
                         intermediateUps, intermediateDowns
-                        ] + intGann + intRetLines + \
-                       intTimeRets + intSignalTops + intSignalBots
+                        ]
+                          # intGann +
+    # intermediateData += intRetLines
+    intermediateData += intTimeRets
+                          # intSignalTops + intSignalBots
                        # + [bigTops,bigBots]
     majorData = [
-        insideBars, activeBars,
+        insideBars,
+                    # minor,
+                    # minorTops, minorBottoms,
+                    activeBars,
                     # OHF, OLF,
-        major, majorTops, majorBottoms,
-                 majorUps, majorDowns
-                 ] + majRetLines
+        # intermediate,
+        major,
+        majorTops, majorBottoms,
+                 majorUps, majorDowns,
+                # lps,hps,
+                 ]
+    # majorData += minRetracements
+
+    for eachRet in retLinesList:
+        majorData += eachRet
+    #
+    # majorData += retClusters
+
+    tops = Scatter(x=df.date,y=df.high,mode='lines')
+    bots = Scatter(x=df.date,y=df.low,mode='lines')
+
+    # majorData+= [tops,bots]
+
+    # ma1 = movingAverage(df.close,window=200,win_type=None,dates=df.date)
+    # ma1 = Scatter(x=ma1.date, y=ma1.movingAverage, mode='lines', marker=dict(color='blue'), line=dict(dash='solid'))
+    # ma2 = movingAverage(df.close, window=300, win_type=None,dates=df.date)
+    # ma2 = Scatter(x=ma2.date, y=ma2.movingAverage, mode='lines', marker=dict(color='blue'), line=dict(dash='solid'))
+    # ma3 = movingAverage(df.close, window=400, win_type=None,dates=df.date)
+    # ma3 = Scatter(x=ma3.date, y=ma3.movingAverage, mode='lines', marker=dict(color='blue'), line=dict(dash='solid'))
+    # ma4 = movingAverage(df.close, window=500, win_type=None,dates=df.date)
+    # ma4 = Scatter(x=ma4.date, y=ma4.movingAverage, mode='lines', marker=dict(color='blue'), line=dict(dash='solid'))
+    #
+    # majorData+=[ma1,ma2,ma3,ma4]
 
 
     layoutMin = Layout(
@@ -300,10 +485,10 @@ if __name__ == '__main__':
     # plotly.offline.plot(fig,image='png',image_filename='3trends',image_width=7200,image_height=1200)
 
     # plotter(minorFig,'minorTrend_daily.html', [minorHL_html])
-    plotter(intermediateFig, 'intermediateTrend_daily.html', [intermediateHL_html])
-    # plotter(majorFig, 'majorTrend_weeklyFrom2008.html', [
-    #     topProjHtml, ganttTopHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml
-    # ])
+    # plotter(intermediateFig, 'intermediateTrend_daily.html', [intermediateHL_html])
+    plotter(majorFig, 'majorTrend_weeklyFrom2008.html',[
+        topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml
+    ])
 
     # help(plotly.offline.plot)
 

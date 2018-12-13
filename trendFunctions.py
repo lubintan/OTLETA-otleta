@@ -79,6 +79,87 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
+def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[]):
+    numRows = 4
+
+    fig = plotly.tools.make_subplots(
+        rows=numRows+1, cols=1, shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.1,row_width=[0.2]*numRows+[0.8])
+
+    for eachTrace in mainTrace:
+        fig.append_trace(eachTrace,1,1)
+
+    # fig.append_trace(anchorPoint, 4, 1)
+    for each in others:
+        fig.append_trace(each, 2, 1)
+
+    for each in others2:
+        fig.append_trace(each, 3, 1)
+
+    for each in others3:
+        fig.append_trace(each, 4, 1)
+
+    for each in others4:
+        fig.append_trace(each, 5, 1)
+
+    fig['layout'].update(barmode='stack',xaxis=dict(rangeslider=dict(visible=False),showgrid=True),
+    #                      yaxis2 = dict(showticklabels=False,title='Inverse MA'),
+    #                      yaxis3=dict(showticklabels=False,title='240W'),
+    #                      yaxis4=dict(showticklabels=False,title='80W'),
+    #                      yaxis5=dict(showticklabels=False,title='40W'),
+    #                      yaxis6=dict(showticklabels=False,title='20W'),
+    #                      yaxis7=dict(showticklabels=False,title='10W'),
+    #                      title=title,
+    #                      # annotations=[dict(
+    #                      #                    x=lastIdx,
+    #                      #                    y=0,
+    #                      #                    xref='x3',
+    #                      #                    yref='y3',
+    #                      #                    text='Avg: '+ avgList[0] + 'weeks',
+    #                      #                    showarrow=False,
+    #                      #                    align='right',
+    #                      #                ),
+    #                      #                 dict(
+    #                      #                     x=lastIdx,
+    #                      #                     y=0,
+    #                      #                     xref='x4',
+    #                      #                     yref='y4',
+    #                      #                     text='Avg: '+ avgList[1] + 'weeks',
+    #                      #                     showarrow=False,
+    #                      #                     align='right',
+    #                      #                 ),
+    #                      #                 dict(
+    #                      #                     x=lastIdx,
+    #                      #                     y=0,
+    #                      #                     xref='x5',
+    #                      #                     yref='y5',
+    #                      #                     text='Avg: '+ avgList[2] + 'weeks',
+    #                      #                     showarrow=False,
+    #                      #                     align='right',
+    #                      #                 ),
+    #                      #                 dict(
+    #                      #                     x=lastIdx,
+    #                      #                     y=0,
+    #                      #                     xref='x6',
+    #                      #                     yref='y6',
+    #                      #                     text='Avg: '+ avgList[3] + 'weeks',
+    #                      #                     showarrow=False,
+    #                      #                     align='right',
+    #                      #                 ),
+    #                      #                 dict(
+    #                      #                     x=lastIdx,
+    #                      #                     y=0,
+    #                      #                     xref='x7',
+    #                      #                     yref='y7',
+    #                      #                     text='Avg: '+ avgList[4] + 'weeks',
+    #                      #                     showarrow=False,
+    #                      #                     align='right',
+    #                      #                 ),]
+                                    )
+
+
+    plotly.offline.plot(fig)
+    # plotly.offline.plot(fig,output_type='file',filename=filename)
+
 def getClusters(levelList, startX, endX, minClusters=4,):
     #1. Method: find min spacing
     #2. start from biggest range/spacing one.
@@ -188,7 +269,6 @@ def getClusters(levelList, startX, endX, minClusters=4,):
         traces.append(thisLine)
 
     return traces
-
 
 def getHps(y):
 
@@ -440,7 +520,7 @@ def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     return diff.days, counter - 2
 
 
-def trendProjector(topsAndBottoms, todaysDate):
+def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 'violet'):
     # 1. have a 3d list of tops, bottoms and projections
     # 2. have 2 charts. 1 to project tops, another one to project bottoms.
 
@@ -462,6 +542,10 @@ def trendProjector(topsAndBottoms, todaysDate):
     LHstart, LHend, LHdiff = [], [], []
 
     totalLength = len(topsAndBottoms)
+
+    barWidth = 1
+
+    latestDate = todaysDate
 
     for index,row in topsAndBottoms.iterrows():
         if row.top:
@@ -531,20 +615,32 @@ def trendProjector(topsAndBottoms, todaysDate):
                 LLend.append(topsAndBottoms.iloc[index + 2].date)
                 LLdiff.append(diff.days)
 
+
     # Projection of next High
+
     Hproj_bars = []
     ganttList = []
 
     for eachProj in HH_projs:
         eachDates = HH_projs[eachProj]
+
+        #Get Latest Projection Date
+        latestDate = max([latestDate, max(eachDates)])
+
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
+                      # width=[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
-                      showlegend=True,
                       # hoverinfo='none',
                       name='HH Projection from '+eachProj.strftime("%y-%m-%d"),
-                      dx=1
+                      dx=1,dy=1,
+                      yaxis='y2',
+                      legendgroup='Proj of next highs',
+                      showlegend=False,
+                      opacity=0.4,
+                      marker=dict(color=highColor),
+                      hoverinfo='x',
                       )
 
         Hproj_bars.append(thisBar)
@@ -555,14 +651,24 @@ def trendProjector(topsAndBottoms, todaysDate):
 
     for eachProj in LH_projs:
         eachDates = LH_projs[eachProj]
+
+        # Get Latest Projection Date
+        latestDate = max([latestDate, max(eachDates)])
+
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
+                      # width=[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
-                      showlegend=True,
                       # hoverinfo='none',
                       name='LH Projection from '+eachProj.strftime("%y-%m-%d"),
-                      dx=1
+                      dx=1,dy=1,
+                      yaxis='y2',
+                      legendgroup='Proj of next highs',
+                      showlegend=False,
+                      opacity=0.4,
+                      marker=dict(color=highColor),
+                      hoverinfo='x',
                       )
 
         Hproj_bars.append(thisBar)
@@ -584,19 +690,30 @@ def trendProjector(topsAndBottoms, todaysDate):
 
 
     # Projection of next Low
+
     Lproj_bars = []
     ganttListLow = []
 
     for eachProj in LL_projs:
         eachDates = LL_projs[eachProj]
+
+        # Get Latest Projection Date
+        latestDate = max([latestDate, max(eachDates)])
+
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
+                      # width=[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
-                      showlegend=True,
                       # hoverinfo='none',
                       name='LL Projection from '+eachProj.strftime("%y-%m-%d"),
-                      dx=1
+                      dx=1,dy=1,
+                      yaxis='y2',
+                      legendgroup='Proj of next lows',
+                      showlegend=False,
+                      opacity=0.4,
+                      marker=dict(color=lowColor),
+                      hoverinfo='x',
                       )
 
         Lproj_bars.append(thisBar)
@@ -607,14 +724,24 @@ def trendProjector(topsAndBottoms, todaysDate):
 
     for eachProj in HL_projs:
         eachDates = HL_projs[eachProj]
+
+        # Get Latest Projection Date
+        latestDate = max([latestDate, max(eachDates)])
+
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
+                      # width=[barWidth]*length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
-                      showlegend=True,
                       # hoverinfo='none',
                       name='HL Projection from '+eachProj.strftime("%y-%m-%d"),
-                      dx=1
+                      dx=1,dy=1,
+                      yaxis='y2',
+                      legendgroup='Proj of next lows',
+                      showlegend=False,
+                      opacity=0.4,
+                      marker=dict(color=lowColor),
+                      hoverinfo='x',
                       )
 
         Lproj_bars.append(thisBar)
@@ -657,78 +784,79 @@ def trendProjector(topsAndBottoms, todaysDate):
 
 
 
-    return plotly.offline.plot(figure_or_data=fig,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
-           plotly.offline.plot(figure_or_data=figLow,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
-           plotly.offline.plot(figure_or_data=HH_table,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
-           plotly.offline.plot(figure_or_data=LH_table,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
-           plotly.offline.plot(figure_or_data=LL_table,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),\
-           plotly.offline.plot(figure_or_data=HL_table,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       })
+    return Hproj_bars,Lproj_bars, fig, figLow, latestDate
+        # plotly.offline.plot(figure_or_data=fig,
+        #                        show_link=False,
+        #                        output_type='div',
+        #                        include_plotlyjs=False,
+        #                        # filename='minorHLData.html',
+        #                        auto_open=False,
+        #                        config={'displaylogo': False,
+        #                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+        #                                                           'zoomOut2d',
+        #                                                           'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+        #                                'displayModeBar': False
+        #                                }),\
+        #    plotly.offline.plot(figure_or_data=figLow,
+        #                        show_link=False,
+        #                        output_type='div',
+        #                        include_plotlyjs=False,
+        #                        # filename='minorHLData.html',
+        #                        auto_open=False,
+        #                        config={'displaylogo': False,
+        #                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+        #                                                           'zoomOut2d',
+        #                                                           'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+        #                                'displayModeBar': False
+        #                                }),\
+        #    plotly.offline.plot(figure_or_data=HH_table,
+        #                        show_link=False,
+        #                        output_type='div',
+        #                        include_plotlyjs=False,
+        #                        # filename='minorHLData.html',
+        #                        auto_open=False,
+        #                        config={'displaylogo': False,
+        #                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+        #                                                           'zoomOut2d',
+        #                                                           'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+        #                                'displayModeBar': False
+        #                                }),\
+        #    plotly.offline.plot(figure_or_data=LH_table,
+        #                        show_link=False,
+        #                        output_type='div',
+        #                        include_plotlyjs=False,
+        #                        # filename='minorHLData.html',
+        #                        auto_open=False,
+        #                        config={'displaylogo': False,
+        #                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+        #                                                           'zoomOut2d',
+        #                                                           'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+        #                                'displayModeBar': False
+        #                                }),\
+        #    plotly.offline.plot(figure_or_data=LL_table,
+        #                        show_link=False,
+        #                        output_type='div',
+        #                        include_plotlyjs=False,
+        #                        # filename='minorHLData.html',
+        #                        auto_open=False,
+        #                        config={'displaylogo': False,
+        #                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+        #                                                           'zoomOut2d',
+        #                                                           'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+        #                                'displayModeBar': False
+        #                                }),\
+        #    plotly.offline.plot(figure_or_data=HL_table,
+        #                        show_link=False,
+        #                        output_type='div',
+        #                        include_plotlyjs=False,
+        #                        # filename='minorHLData.html',
+        #                        auto_open=False,
+        #                        config={'displaylogo': False,
+        #                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+        #                                                           'zoomOut2d',
+        #                                                           'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+        #                                'displayModeBar': False
+        #                                })
 
 # plotly.offline.plot(figure_or_data=gantt,
            #                     show_link=False,
@@ -957,7 +1085,7 @@ def trendFinder(stuff,barHeight=0.03,upColor = 'green',downColor='red'):
 def plotTopBotHist(stuff):
     HH_bars = stuff['HH_bars']
     HH_barsMean = np.mean(HH_bars)
-    HH_barsMode = sp.stats.mode(HH_bars).mode[0]
+    # HH_barsMode = sp.stats.mode(HH_bars).mode[0]
     HH_title = 'Average TOP to TOP duration: %.2f' % (HH_barsMean) + ' bars'
     HH_bars = HH_bars.value_counts()
     HH_barsTrace = Bar(x=HH_bars.index, y=HH_bars.values,
@@ -968,7 +1096,7 @@ def plotTopBotHist(stuff):
 
     LL_bars = stuff['LL_bars']
     LL_barsMean = np.mean(LL_bars)
-    LL_barsMode = sp.stats.mode(LL_bars).mode[0]
+    # LL_barsMode = sp.stats.mode(LL_bars).mode[0]
     LL_title = 'Average BOTTOM to BOTTOM duration: %.2f' % (LL_barsMean) + ' bars'
     LL_bars = LL_bars.value_counts()
     LL_barsTrace = Bar(x=LL_bars.index, y=LL_bars.values,
@@ -979,7 +1107,7 @@ def plotTopBotHist(stuff):
 
     HL_bars = stuff['HL_bars']
     HL_barsMean = np.mean(HL_bars)
-    HL_barsMode = sp.stats.mode(HL_bars).mode[0]
+    # HL_barsMode = sp.stats.mode(HL_bars).mode[0]
     HL_title = 'Average TOP to BOTTOM duration: %.2f' % (HL_barsMean) + ' bars'
     HL_bars = HL_bars.value_counts()
     HL_barsTrace = Bar(x=HL_bars.index, y=HL_bars.values,
@@ -990,7 +1118,7 @@ def plotTopBotHist(stuff):
 
     LH_bars = stuff['LH_bars']
     LH_barsMean = np.mean(LH_bars)
-    LH_barsMode = sp.stats.mode(LH_bars).mode[0]
+    # LH_barsMode = sp.stats.mode(LH_bars).mode[0]
     LH_title = 'Average BOTTOM to TOP duration: %.2f' % (LH_barsMean) + ' bars'
     LH_bars = LH_bars.value_counts()
     LH_barsTrace = Bar(x=LH_bars.index, y=LH_bars.values,
@@ -1032,7 +1160,7 @@ def plotTopBotHist(stuff):
                                                                   'zoomOut2d',
                                                                   'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
                                        'displayModeBar': False
-                                       })
+                                       }),
 
 
 def groupByMonths(df):
@@ -1175,7 +1303,7 @@ def getTrendTopsAndBottoms(trendLine, df):
     LL_bars = LL_bars.dropna()
 
     LL_barsMean = np.mean(LL_bars)
-    LL_barsMode = sp.stats.mode(LL_bars).mode[0]
+    # LL_barsMode = sp.stats.mode(LL_bars).mode[0]
 
     LL_barsTrace = Histogram(x=LL_bars, xbins=dict(start=np.min(LL_bars), size=1, end=np.max(LL_bars)))
     LL_barsFig = Figure(data=[LL_barsTrace])

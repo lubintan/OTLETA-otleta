@@ -17,7 +17,7 @@ if __name__ == '__main__':
     df.columns = ['date','close','open','high','low']
     df['date'] = pd.to_datetime(df['date'])
 
-    cutoff = len(df) - 0
+    cutoff = len(df) - 200
 
     dfTail = df[cutoff:]
     df = df[:cutoff]
@@ -27,7 +27,6 @@ if __name__ == '__main__':
     #     (df.iloc[-1].date - df.iloc[0].date).days)*0.30)
 
     endpoint= df.iloc[-1].date+timedelta(days=50)
-
     # endpoint = dfTail.iloc[-1].date + timedelta(days=((df.iloc[-1].date - df.iloc[0].date).days) * 0.10)
 
     # df = groupByMonths(df)
@@ -160,8 +159,8 @@ if __name__ == '__main__':
 
     #region:derivative trends
     
-    firstDateList = []
-    lastDateList = []
+    firstDateList = [firstDateMaj]
+    lastDateList = [lastDateMaj]
     bigTopBotsMajDrvd = bigTopBotsMaj
 
     firstDateMajDrvdFinal = None
@@ -238,13 +237,44 @@ if __name__ == '__main__':
     Hproj,Lproj, HprojFig, LprojFig, latestDateMaj = trendProjector(majorTopsBottoms, df.iloc[-1].date)
     #endregion
 
+    # region: Hurst Cycles
+
+    hurst = mainHurst(df)
+    hurstProjs = []
+
+    if hurst > 2:
+        for i in range(len(hurst)):
+            length = len(hurst[i])
+            thisBar = Bar(x=hurst[i], y=[5-i] * length,
+                          # width=[barWidth]*length,
+                          # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
+                          # hoverinfo='none',
+                          # name='HL Projection from ' + eachProj.strftime("%y-%m-%d"),
+                          dx=1, dy=1,
+                          yaxis='y2',
+                          # legendgroup='Proj of next lows',
+                          showlegend=False,
+                          opacity=0.4,
+                          marker=dict(color='navy'),
+                          hoverinfo='x',
+                          )
+            hurstProjs.append(thisBar)
+
+    # print(hurstProjs)
+    # exit()
+
+    # endregion
+
     endpoint = max(latestDateInt,latestDateMaj)
+    endpoint = dfTail.iloc[-1].date
+
 
     # region:retracement lines
     retLevels = []
     retLinesList = []
-    colorList = ['red', 'navy', 'olive', 'yellow', 'green', 'brown', 'purple', 'violet', 'khaki', 'silver', 'gold',
+    colorList = ['red', 'navy', 'olive', 'orange', 'green', 'brown', 'purple', 'violet', 'khaki', 'silver', 'gold',
                  'blue', 'sienna']
+    lowProjLevels = []
     # region:little retracements
     #
     #
@@ -264,26 +294,30 @@ if __name__ == '__main__':
     # region:maj retracements
     #
     #
-    majRetLines, majRetLevels = retracementLines(majorTopsBottoms.iloc[-2].point,majorTopsBottoms.iloc[-1].point,
+    majRetLines, majRetLevels, majLowProjLevels = retracementLines(majorTopsBottoms.iloc[-2].point,majorTopsBottoms.iloc[-1].point,
                               [majorTopsBottoms.iloc[-2].date, endpoint],
                               name='Maj Retrace',
-                              color=colorList[0]
+                              color=colorList[0],
+                                previousLowProjLevels=lowProjLevels
                               )
-    retLevels.append(majRetLevels)
-    retLinesList.append(majRetLines)
+    # retLevels.append(majRetLevels)
+    # retLinesList.append(majRetLines)
+    # lowProjLevels += majLowProjLevels
 
     for i in range(len(firstDateList)):
 
 
-        majTrendRetLines, majTrendRetLevels = retracementLines(trendLine3[trendLine3.date==firstDateList[i]].point.values[0],
+        majTrendRetLines, majTrendRetLevels, majTrendLowProjLevels = retracementLines(trendLine3[trendLine3.date==firstDateList[i]].point.values[0],
                                                                trendLine3[trendLine3.date==lastDateList[i]].point.values[0],
                                        [firstDateList[i],endpoint],
                                             name='Maj Trend Retrace %i'%(i),
-                                            color=colorList[(i+1)%(len(colorList))]
+                                            color=colorList[(i+1)%(len(colorList))],
+                                previousLowProjLevels=lowProjLevels
                                             )
 
         retLevels.append(majTrendRetLevels)
         retLinesList.append(majTrendRetLines)
+        lowProjLevels += majTrendLowProjLevels
 
     highPoint1 = df[df.date == firstDateMajDrvdFinal].high.values[0]
     highPoint2 = df[df.date == lastDateMajDrvdFinal].high.values[0]
@@ -301,22 +335,30 @@ if __name__ == '__main__':
         lastPoint = highPoint2
 
 
-    majTrendRetLines, majTrendRetLevels = retracementLines(
+    majTrendRetLines, majTrendRetLevels, majTrendLowProjLevels = retracementLines(
         firstPoint,
         lastPoint,
         [firstDateMajDrvdFinal,
          endpoint],
         name='Maj Max Trend Retrace',
-        color=colorList[(len(firstDateList)+1) % (len(colorList))]
+        color=colorList[(len(firstDateList)+1) % (len(colorList))],
+        previousLowProjLevels=lowProjLevels
         )
 
     retLevels.append(majTrendRetLevels)
     retLinesList.append(majTrendRetLines)
+    lowProjLevels += majTrendLowProjLevels
+
+    # remove duplicates from
 
     #endregion
 
     # retracement clusters
-    retClusters = getClusters(retLevels, df.iloc[-1].date, endpoint)
+    # retClusters = getClusters(retLevels, df.iloc[-1].date, endpoint)
+
+    clusters = clusterAlgo2(retLevels,df.iloc[-1].close,startX=df.iloc[-2].date,endX=endpoint)
+
+
 
     #endregion
 
@@ -324,8 +366,6 @@ if __name__ == '__main__':
     intSignalTops = signalTops(df,bigTops=bigTopListInt)
     intSignalBots = signalBots(df,bigBots=bigBotListInt)
     #endregion
-
-
     
     #region: active bars and inside bars and outside bars
     insideBars = Ohlc(name='Inside Bars',x=dfInsideBarsOnly.date,open=dfInsideBarsOnly.open,close=dfInsideBarsOnly.close,
@@ -450,24 +490,28 @@ if __name__ == '__main__':
         # intermediate,
         allBars, tailBars,
         major,
-        majorTops, majorBottoms,
+        # majorTops, majorBottoms,
 
                  # majorUps, majorDowns,
+        # majorUpsDrvd, majorDownsDrvd,
                 # lps,hps,
                  ]
-    # majorData += minRetracements
 
     for eachRet in retLinesList:
         majorData += eachRet
-    #
-    # majorData += retClusters
-    # majorData += Hproj
-    # majorData += Lproj
+
+    majorData += clusters
 
     tops = Scatter(x=df.date,y=df.high,mode='lines')
     bots = Scatter(x=df.date,y=df.low,mode='lines')
 
     # majorData+= [tops,bots]
+    #
+    # majorData += retClusters
+    # majorData += Hproj
+    # majorData += Lproj
+    # majorData += minRetracements
+
 
     #endregion
 
@@ -508,7 +552,8 @@ if __name__ == '__main__':
             showgrid=True,
         ),
         showlegend=True,
-        barmode='stack',
+        yaxis=dict(range=[min(df.low)*0.8, max(df.high) * 1.2]),
+    barmode='stack',
         yaxis2=dict(overlaying='y',side='right'),
         # annotations=majRetAnnot
     )
@@ -523,7 +568,7 @@ if __name__ == '__main__':
     # plotter(minorFig,'minorTrend_daily.html', [minorHL_html])
     # plotter(intermediateFig, 'intermediateTrend_daily.html', [intermediateHL_html])
 
-    # plotter(majorFig, 'majorTrend_weeklyFrom2008.html', [])
+    plotter(majorFig, 'majorTrend_weeklyFrom2008.html', [])
     #         # [topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml],
     #         )
 
@@ -531,8 +576,10 @@ if __name__ == '__main__':
 
     # print(HprojInt)
     # exit()
-
-    verticalPlot(mainTrace=majorData,others=Hproj,others2=Lproj,others3=HprojInt,others4=LprojInt)
+    #
+    # verticalPlot(mainTrace=majorData,others=Hproj,others2=Lproj,others3=HprojInt,others4=LprojInt,hurst1=hurstProjs,)
+    #              # hurst2=hurstProjs[1],hurst3=hurstProjs[2],
+    #              # hurst4=hurstProjs[3],hurst5=hurstProjs[4],)
 
     endTime = time.time()
     elapsed = endTime-startTime

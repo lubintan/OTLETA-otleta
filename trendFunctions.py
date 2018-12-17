@@ -79,8 +79,8 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
-def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[]):
-    numRows = 4
+def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[],hurst1=[],hurst2=[],hurst3=[],hurst4=[],hurst5=[],):
+    numRows = 5
 
     fig = plotly.tools.make_subplots(
         rows=numRows+1, cols=1, shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.1,row_width=[0.2]*numRows+[0.8])
@@ -100,6 +100,19 @@ def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[]):
 
     for each in others4:
         fig.append_trace(each, 5, 1)
+
+
+    for each in hurst1:
+        fig.append_trace(each, 6, 1)
+    # for each in hurst2:
+    #     fig.append_trace(each, 7, 1)
+    # for each in hurst3:
+    #     fig.append_trace(each, 8, 1)
+    # for each in hurst4:
+    #     fig.append_trace(each, 9, 1)
+    # for each in hurst5:
+    #     fig.append_trace(each, 10, 1)
+
 
     fig['layout'].update(barmode='stack',xaxis=dict(rangeslider=dict(visible=False),showgrid=True),
     #                      yaxis2 = dict(showticklabels=False,title='Inverse MA'),
@@ -160,20 +173,236 @@ def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[]):
     plotly.offline.plot(fig)
     # plotly.offline.plot(fig,output_type='file',filename=filename)
 
-def getClusters(levelList, startX, endX, minClusters=4,):
-    #1. Method: find min spacing
-    #2. start from biggest range/spacing one.
-    #3. check against the rest.
-    #4. every one that has, take it out. From checker, and checkee. Add to cluster list.
-    #5. keep going until 2nd last guy
-    #6. increase spacing and repeat 2-4 until min clusters met
+def clusterAlgo2(levelList, close, startX, endX):
+
+    # levelList = [[1,3,5],[3.5,7,9,11],[0.3,2,7],[5.5,4.5,10.1,3]]
+
+    #find max spacing from min range (in case minspacing between sets is too big)
+    maxSpace = 0
+    for eachRange in levelList:
+        rangeSpacings = []
+        for i in range(len(eachRange)-1):
+            rangeSpacings.append(abs(eachRange[i] - eachRange[i+1]))
+        thisMaxSpacing = max(rangeSpacings)
+        if thisMaxSpacing > maxSpace:
+            maxSpace = thisMaxSpacing
+
+
+
+    spaceFactor = 2
+    minSpace = maxSpace #np.inf
+    clusters = []
+    length = len(levelList)
+
+    for each in levelList:
+        each.sort()
+
+    print(levelList)
+
+    for i in range(length):
+
+        for j in range(1,length):
+            nextIdx = i + j
+            if nextIdx >= length: break
+
+            # prevDist = np.inf
+
+            for mainVal in levelList[i]:
+                for subVal in levelList[nextIdx]:
+                    dist = abs(mainVal-subVal)
+                    # if dist >= prevDist: break
+
+                    if dist < minSpace:
+                        minSpace = dist
+
+                    # prevDist = dist
+
+    finalClustersAbove = []
+    finalClustersBelow = []
+    finalAboveLevel = -1
+    finalBelowLevel = -1
+    
+    
+    if minSpace==maxSpace:
+        # if no clusters found
+        aboveMin = np.inf
+        belowMin = np.inf
+        
+        for eachRange in levelList:
+            for val in eachRange:
+                aboveDist = val - close
+                belowDist = close - val
+                
+                if (aboveDist>0) and (aboveDist<aboveMin):
+                    finalAboveLevel = val
+                    aboveMin = aboveDist
+                    continue
+                if (belowDist > 0) and (belowDist < belowMin):
+                    finalBelowLevel = val
+                    belowMin = belowDist
+
+
+    else:#if clusters exist
+        clusterCutoff = spaceFactor * minSpace
+    
+        for i in range(length):
+            for j in range(1, length):
+                nextIdx = i + j
+                if nextIdx >= length: break
+                for mainVal in levelList[i]:
+                    for subVal in levelList[nextIdx]:
+                        dist = abs(mainVal - subVal)
+    
+                        if dist <= clusterCutoff:
+                            clusters.append([mainVal, subVal])
+                            
+        # find clusters above close and below close
+        clustersAbove = {}
+        clustersAboveDist = []
+        clustersBelow = {}
+        clustersBelowDist = []
+        
+        
+        for each in clusters:
+            avgDist = (sum(each) / len(each))
+            if (avgDist > close):
+                clustersAboveDist.append(avgDist)
+                clustersAbove[avgDist] = each
+                continue
+            elif (avgDist < close):
+                clustersBelowDist.append(avgDist)
+                clustersBelow[avgDist] = each
+                        
+                
+        if len(clustersAboveDist) > 0:
+            finalClustersAbove =clustersAbove[min(clustersAboveDist)]
+        else: # no above clusters
+            aboveMin = np.inf
+            for eachRange in levelList:
+                for val in eachRange:
+                    aboveDist = val - close
+    
+                    if (aboveDist > 0) and (aboveDist < aboveMin):
+                        finalAboveLevel = val
+                        aboveMin = aboveDist
+
+        if len(clustersBelowDist) > 0:
+            finalClustersBelow = clustersBelow[min(clustersBelowDist)]
+        else:  # no below clusters
+            belowMin = np.inf
+            for eachRange in levelList:
+                for val in eachRange:
+                    belowDist = close - val
+
+                    if (belowDist > 0) and (belowDist < belowMin):
+                        finalBelowLevel = val
+                        belowMin = belowDist
+
+
+    print(finalAboveLevel,finalBelowLevel,finalClustersAbove, finalClustersBelow)
+
+    clusterColor = 'navy'
+    clusterWidth = 3
+    clusterDash = 'dash'
+    levelColor = 'blue'
+    levelWidth = 2
+    levelDash = 'dash'
+
+    traces = []
+
+    if len(finalClustersAbove) > 0:
+
+        thisLine = Scatter(name='Resistance Cluster', x=[startX, endX], y=[np.mean(finalClustersAbove), np.mean(finalClustersAbove)],
+                           mode='lines',
+                           opacity=0.7,
+                           line=dict(color=clusterColor,
+                                     width=clusterWidth,  # newClusterDict[eachMain]*2,
+                                     dash=clusterDash,
+                                     ),
+                           # marker=dict(symbol='circle'),
+                           hoverinfo='y',  # 'none'
+                           # legendgroup=name,
+                           showlegend=True,
+                           # textposition='middle right',
+                           # textfont=dict(color=color, family='Gravitas One'),
+                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           )
+        traces.append(thisLine)
+
+
+    if len(finalClustersBelow) > 0:
+
+        thisLine = Scatter(name='Support Cluster', x=[startX, endX], y=[np.mean(finalClustersBelow), np.mean(finalClustersBelow)],
+                           mode='lines',
+                           opacity=0.7,
+                           line=dict(color=clusterColor,
+                                     width=clusterWidth,  # newClusterDict[eachMain]*2,
+                                     dash=clusterDash,
+                                     ),
+                           # marker=dict(symbol='circle'),
+                           hoverinfo='y',  # 'none'
+                           # legendgroup=name,
+                           showlegend=True,
+                           # textposition='middle right',
+                           # textfont=dict(color=color, family='Gravitas One'),
+                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           )
+        traces.append(thisLine)
+
+    if finalAboveLevel > 0:
+
+        thisLine = Scatter(name='Resistance Rtcmt', x=[startX, endX], y=[np.mean(finalAboveLevel), np.mean(finalAboveLevel)],
+                           mode='lines',
+                           opacity=0.7,
+                           line=dict(color=levelColor,
+                                     width=levelWidth,  # newClusterDict[eachMain]*2,
+                                     dash=levelDash,
+                                     ),
+                           # marker=dict(symbol='circle'),
+                           hoverinfo='y',  # 'none'
+                           # legendgroup=name,
+                           showlegend=True,
+                           # textposition='middle right',
+                           # textfont=dict(color=color, family='Gravitas One'),
+                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           )
+        traces.append(thisLine)
+
+    if finalBelowLevel > 0:
+
+        thisLine = Scatter(name='Support Rtcmt', x=[startX, endX], y=[np.mean(finalBelowLevel), np.mean(finalBelowLevel)],
+                           mode='lines',
+                           opacity=0.7,
+                           line=dict(color=levelColor,
+                                     width=levelWidth,  # newClusterDict[eachMain]*2,
+                                     dash=levelDash,
+                                     ),
+                           # marker=dict(symbol='circle'),
+                           hoverinfo='y',  # 'none'
+                           # legendgroup=name,
+                           showlegend=True,
+                           # textposition='middle right',
+                           # textfont=dict(color=color, family='Gravitas One'),
+                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           )
+        traces.append(thisLine)
+
+    return traces
+
+def clusterAlgo(levelList, minClusters=0,):
+    # 1. Method: find min spacing
+    # 2. start from biggest range/spacing one.
+    # 3. check against the rest.
+    # 4. every one that has, take it out. From checker, and checkee. Add to cluster list.
+    # 5. keep going until 2nd last guy
+    # 6. increase spacing and repeat 2-4 until min clusters met
 
     rangeList = []
     rangeDict = {}
 
-    #region:find min spacing
+    # region:find min spacing
     for each in levelList:
-        ranger = max(each)-min(each)
+        ranger = max(each) - min(each)
         rangeList.append(ranger)
         rangeDict[ranger] = each
 
@@ -181,20 +410,20 @@ def getClusters(levelList, startX, endX, minClusters=4,):
 
     minSpacing = 1
 
-    for i in range(len(minList)-1):
-        spacing = abs(minList[i]-minList[i+1])/4.0
-        if spacing<minSpacing: minSpacing=spacing
-    #endregion
+    for i in range(len(minList) - 1):
+        spacing = abs(minList[i] - minList[i + 1]) / 4.0
+        if spacing < minSpacing: minSpacing = spacing
+    # endregion
 
     rangeList.sort()
     rangeList.reverse()
 
     clusterDict = {}
 
-    #main body of this function
+    # main body of this function
     while len(clusterDict) < minClusters:
         print(minSpacing, len(clusterDict))
-        for a in range(len(rangeList)-1):
+        for a in range(len(rangeList) - 1):
             mainList = rangeDict[rangeList[a]]
             mainList.sort()
 
@@ -221,33 +450,43 @@ def getClusters(levelList, startX, endX, minClusters=4,):
         keys.reverse()
 
         # if clusters are still too close, consolidate
-        for i in range(len(keys)-1):
-            dist = abs(keys[i]-keys[i+1])
+        for i in range(len(keys) - 1):
+            dist = abs(keys[i] - keys[i + 1])
 
-            if dist<=minSpacing:
-                clusterDict[keys[i+1]].append(keys[i])
+            if dist <= minSpacing:
+                clusterDict[keys[i + 1]].append(keys[i])
                 for el in clusterDict[keys[i]]:
-                    clusterDict[keys[i+1]].append(el)
+                    clusterDict[keys[i + 1]].append(el)
                 del clusterDict[keys[i]]
 
         if minSpacing > max(rangeList):
             print('COULD NOT FIND PRICE CLUSTERS')
             return
-        minSpacing *= 1.5 #increase minSpacing to increase num of clusters when not enough clusters
-
-    name = 'jack'
-    color = 'crimson'
-    width = 3
-    dash = 'solid'
+        minSpacing *= 1.5  # increase minSpacing to increase num of clusters when not enough clusters
 
     newClusterDict = {}
 
     for eachKey in clusterDict.keys():
         this = clusterDict[eachKey]
 
-        avg = (eachKey + sum(this))/(len(this)+1)
+        avg = (eachKey + sum(this)) / (len(this) + 1)
 
-        newClusterDict[avg] = len(this)+1
+        newClusterDict[avg] = len(this) + 1
+
+    print(newClusterDict)
+    exit()
+
+    return newClusterDict
+
+def getClusters(levelList, startX, endX, minClusters=4,):
+
+    newClusterDict = clusterAlgo(levelList, minClusters,)
+
+
+    name = 'Cluster Buster'
+    color = 'crimson'
+    width = 4
+    dash = 'solid'
 
     traces = []
     for eachMain in newClusterDict.keys():
@@ -255,7 +494,7 @@ def getClusters(levelList, startX, endX, minClusters=4,):
                            mode='lines',
                            opacity=0.7,
                            line=dict(color=color,
-                                     width=newClusterDict[eachMain]*2,
+                                     width=width, #newClusterDict[eachMain]*2,
                                      dash=dash
                                      ),
                            # marker=dict(symbol='circle'),
@@ -435,7 +674,7 @@ def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, rati
 
     return line
 
-def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080'):
+def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080',previousLowProjLevels=[]):
     # lastPoint = lastPoint.values[0]
     # firstPoint = firstPoint.valuesalues[0]
 
@@ -446,17 +685,31 @@ def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080')
     trendRange = lastPoint - firstPoint
 
     levels = []
+    lowProj = []
+    lowProjLevels =[]
 
     retracementPercentages = [.25,.33,.382,.50,.618,.66,.75]
 
     if trendRange < 0: #uptrend
-        retracementPercentages += [.10, .20, .30, .40, .60, .70, .80, .90, .125, .375, .625, .75, .875]
+        retracementPercentages += [.10, .20, .30, .40, .60, .70, .80, .90, .125, .75, .875]
 
     else:
-        retracementPercentages += [1,1.5]
+        # retracementPercentages += []
+        lowProj = [1.5,
+                   2, 2.5, 3, 4, 5]
+
 
     for percent in retracementPercentages:
         levels.append(percent * trendRange + firstPoint)
+
+    for multiple in lowProj:
+        val = multiple * firstPoint
+
+        if not (val in previousLowProjLevels):
+            # levels.append(val)
+            lowProjLevels.append(val)
+
+
 
     traces = []
     # annot = []
@@ -483,7 +736,7 @@ def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080')
     # annot.append(dict(x=x[-1],y=levels[0],text=str(retracementPercentages[0]),showarrow=False,ax=0,ay=-30,font=dict(color=color)))
     traces.append(firstLine)
 
-    for idx in range(1,len(levels)):
+    for idx in range(1,len(retracementPercentages)):
         thisLine= Scatter(name=name, x=x, y=[levels[idx],levels[idx]],
                       mode='lines+text',
                       line=dict(color=color,
@@ -502,7 +755,26 @@ def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080')
         # annot.append(dict(x=x[-1], y=levels[idx], text=str(retracementPercentages[idx]), showarrow=False, ax=0, ay=-30,font=dict(color=color)))
         traces.append(thisLine)
 
-    return traces, levels
+    for idx in range(len(lowProjLevels)):
+        thisLine= Scatter(name=name, x=x, y=[lowProjLevels[idx],lowProjLevels[idx]],
+                      mode='lines+text',
+                      line=dict(color=color,
+                                width=width,
+                                dash=dash
+                                ),
+                      # marker=dict(symbol='circle'),
+                      hoverinfo='none', #'none'
+                     legendgroup=name,
+                          showlegend=False,
+                          textposition='middle right',
+                          textfont=dict(color=color, family='Gravitas One'),
+                          text=['','  %.1f'%(lowProj[idx]) + 'x']
+                          )
+
+        # annot.append(dict(x=x[-1], y=levels[idx], text=str(retracementPercentages[idx]), showarrow=False, ax=0, ay=-30,font=dict(color=color)))
+        traces.append(thisLine)
+
+    return traces, levels, lowProjLevels
 
 def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     if not (

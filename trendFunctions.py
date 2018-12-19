@@ -79,8 +79,36 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
-def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[],hurst1=[],hurst2=[],hurst3=[],hurst4=[],hurst5=[],):
-    numRows = 5
+def hurstSines(lowestPoint,df, projLimitDate=None):
+    lengthDf = len(df)
+    hurstX=[]
+    hurstXBehind=[]
+
+    if projLimitDate==None:
+        projLimit = 12  # bars
+        projLimitDate = df.iloc[-1].date + timedelta(days=projLimit * 7)
+
+    for i in range(lengthDf * 77):
+        nextDate = lowestPoint + timedelta(days= i)
+
+        if (nextDate > projLimitDate): break
+        hurstX.append(nextDate)
+
+    for i in range(1,lengthDf * 77):
+        nextDate = lowestPoint - timedelta(days= i)
+
+        if (nextDate < df.iloc[0].date): break
+        hurstXBehind.append(nextDate)
+
+    hurstXInt = np.arange(start=-1*len(hurstXBehind),stop=len(hurstX),step=1)
+    hurstXBehind.reverse()
+    hurstX = hurstXBehind + hurstX
+
+    return hurstX, hurstXInt
+
+
+def verticalPlot(mainTrace,others=[], others2=[],others3=[]):
+    numRows = 1
 
     fig = plotly.tools.make_subplots(
         rows=numRows+1, cols=1, shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.1,row_width=[0.2]*numRows+[0.8])
@@ -91,19 +119,13 @@ def verticalPlot(mainTrace,others=[], others2=[],others3=[],others4=[],hurst1=[]
     # fig.append_trace(anchorPoint, 4, 1)
     for each in others:
         fig.append_trace(each, 2, 1)
+    #
+    # for each in others2:
+    #     fig.append_trace(each, 3, 1)
+    #
+    # for each in others3:
+    #     fig.append_trace(each, 4, 1)
 
-    for each in others2:
-        fig.append_trace(each, 3, 1)
-
-    for each in others3:
-        fig.append_trace(each, 4, 1)
-
-    for each in others4:
-        fig.append_trace(each, 5, 1)
-
-
-    for each in hurst1:
-        fig.append_trace(each, 6, 1)
     # for each in hurst2:
     #     fig.append_trace(each, 7, 1)
     # for each in hurst3:
@@ -197,7 +219,7 @@ def clusterAlgo2(levelList, close, startX, endX):
     for each in levelList:
         each.sort()
 
-    print(levelList)
+    # print(levelList)
 
     for i in range(length):
 
@@ -299,7 +321,7 @@ def clusterAlgo2(levelList, close, startX, endX):
                         belowMin = belowDist
 
 
-    print(finalAboveLevel,finalBelowLevel,finalClustersAbove, finalClustersBelow)
+    # print(finalAboveLevel,finalBelowLevel,finalClustersAbove, finalClustersBelow)
 
     clusterColor = 'navy'
     clusterWidth = 3

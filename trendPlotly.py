@@ -17,7 +17,7 @@ if __name__ == '__main__':
     df.columns = ['date','close','open','high','low']
     df['date'] = pd.to_datetime(df['date'])
 
-    cutoff = len(df) - 0#200
+    cutoff = len(df) - 200
 
     dfTail = df[cutoff:]
     df = df[:cutoff]
@@ -240,9 +240,12 @@ if __name__ == '__main__':
     #endregion
 
     # region: Hurst Cycles
-
-    hurst = mainHurst(df.drop(columns=['lowFirst']))
+    # decision: hurst graph projection to always be in days resolution, so that it looks smooth when the period is small eg. 1.625 weeks
+    hurst, avgList, hurstStartDate = mainHurst(df.drop(columns=['lowFirst']))
+    # avgList = []
     hurstProjs = []
+
+
 
 
     # if hurst > 2:
@@ -275,32 +278,63 @@ if __name__ == '__main__':
     lowestBottom0809Date = lowestBottom0809[lowestBottom0809.point == min(lowestBottom0809.point)].date
 
 
-    hurstNominalList_weeks = [
-        #years
-        np.floor(938.571), #18,
-        np.floor(469.286),#9,
-        np.floor(234.643), #4.5
-        np.floor(156.429),  #3
-        #months
-        np.floor(78.2144),#18
-        np.floor(52.1429),#12
-        np.floor(39.1072), #9
-        #weeks
-        26, #26
-        13, #13
-        6, #6.5
-        3, #3.25
-        1 #1.625
-    ]
+    if len(avgList) == 0:
+        hurstNominalList_weeks = [
+            #years
+               938.571, #18,
+               469.286,#9,
+               234.643, #4.5
+               156.429,  #3
+            #months
+               78.2144,#18
+               52.1429,#12
+               39.1072, #9
+            #weeks
+            26, #26
+            13, #13
+            6, #6.5
+            3, #3.25
+            1, #1.625
+        ]
 
-    projLimit = 12 #days
-    projLimitDate = df.iloc[-1].date + timedelta(days=projLimit)
+        nominalAmplitudes = [
+            14,13,12,11,
+            9,8,7,
+            5,4,3,2,1
+        ]
+        nonNomAmps=[]
 
-
-    hurstNomProj = []
+    else:
+        hurstNominalList_weeks = [
+            # years
+               938.571 ,  # 18,
+               469.286 ,  # 9,
+            #    234.643 ,  # 4.5
+               156.429 ,  # 3
+            # months
+            #    78.2144 ,  # 18
+               52.1429 ,  # 12
+            #    39.1072 ,  # 9
+            # weeks
+            # 26,  # 26
+            # 13,  # 13
+            6,  # 6.5
+            3,  # 3.25
+            1  # 1.625
+        ]
+        nominalAmplitudes = [
+            14,13,11,
+            8,
+            3,2,1
+        ]
+        nonNomAmps=[
+            12,
+            9,7,
+            5,4,
+        ]
 
     # projecting nominal hurst dates
-    #
+    #     hurstNomProj=[]
     # for cycleLength in hurstNominalList_weeks:
     #     thisCycleSet = []
     #     for i in range(1,lengthDf):
@@ -311,44 +345,68 @@ if __name__ == '__main__':
     #             break
     #     hurstNomProj.append(thisCycleSet)
 
-    hurstX = []
 
-
-    for i in range(lengthDf):
-        nextDate = lowestBottom0809Date + timedelta(weeks= i)
-
-        if (nextDate > projLimitDate).values[0]: break
-        hurstX.append(nextDate.values[0])
-
-    hurstXInt = np.arange(len(hurstX),step=1)
 
     hurstTraces = []
 
+
+    lowestBottom0809Date = pd.Timestamp(lowestBottom0809Date.values[0])
+
+    hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=None)
     composite = np.zeros(len(hurstX))
 
-    for cycleLength in hurstNominalList_weeks:
+    for idx in range(len(hurstNominalList_weeks)):
 
-        sine = np.sin(2*np.pi*hurstXInt/cycleLength) * cycleLength
+        sine = -1*np.cos(2*np.pi*hurstXInt/(hurstNominalList_weeks[idx]*7)) * (nominalAmplitudes[idx])
 
         composite += sine
 
         hurstDf = pd.DataFrame(data=sine,columns=['point'])
         hurstDf['date'] = pd.to_datetime(hurstX)
-        hurstSinePlot = Scatter(mode='lines',x=hurstDf.date,y=hurstDf.point,)
+
+        hurstSinePlot = Scatter(name='%i wks'%(hurstNominalList_weeks[idx]),
+                                mode='lines',x=hurstDf.date,y=hurstDf.point,
+                                hoverinfo='x+name')
 
         hurstTraces += [hurstSinePlot]
 
-    # endpoint = max(latestDateInt,latestDateMaj)
+    ####### do the non-nominal averages #######
+    if len(avgList) > 0:
+        hurstX, hurstXInt = hurstSines(lowestPoint=hurstStartDate, df=df,projLimitDate=None)
 
+        for idx in range(len(avgList)):
+
+            sine = -1*np.cos(2*np.pi*hurstXInt/(avgList[idx]*7)) * (nonNomAmps[idx])
+
+            composite += sine
+
+            hurstDf = pd.DataFrame(data=sine,columns=['point'])
+            hurstDf['date'] = pd.to_datetime(hurstX)
+
+            hurstSinePlot = Scatter(name='%i wks'%(avgList[idx]),
+                                    mode='lines',x=hurstDf.date,y=hurstDf.point,
+                                    hoverinfo='x+name')
+
+            hurstTraces += [hurstSinePlot]
+
+    # composite plot
     hurstDf = pd.DataFrame(data=composite, columns=['point'])
     hurstDf['date'] = pd.to_datetime(hurstX)
-    hurstSinePlot = Scatter(mode='lines', x=hurstDf.date, y=hurstDf.point, )
+    hurstCompositePlot = Scatter(name= 'Composite', mode='lines', x=hurstDf.date, y=hurstDf.point, line=dict(dash='dash'),
+                                 yaxis='y2',
+                                 hoverinfo='x+name',
+                                 )
 
-    hurstTraces += [hurstSinePlot]
+    hurstTraces += [hurstCompositePlot]
 
-    if len(dfTail)> 0: endpoint = dfTail.iloc[-1].date
-    else: endpoint = df.iloc[-1].date + timedelta(weeks=12)
-    xaxisRange = [df.iloc[0].date, endpoint]
+    # if len(dfTail)> 0: endpoint = dfTail.iloc[-1].date
+    # else:
+    endpoint = df.iloc[-1].date + timedelta(weeks=12)
+    xaxisRange = [
+                # df.iloc[0].date,
+                df.iloc[-1].date,
+                  endpoint
+                    ]
 
     hurstFig = Figure(data=hurstTraces, layout=Layout(xaxis=dict(range=xaxisRange),showlegend=True))
 
@@ -362,7 +420,7 @@ if __name__ == '__main__':
                                        'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
                                                                   'zoomOut2d',
                                                                   'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
+                                       'displayModeBar': True
                                        }),
 
 
@@ -607,7 +665,7 @@ if __name__ == '__main__':
     tops = Scatter(x=df.date,y=df.high,mode='lines')
     bots = Scatter(x=df.date,y=df.low,mode='lines')
 
-    # majorData += [hurstSinePlot]
+    majorData += [hurstCompositePlot]
     # majorData+= [tops,bots]
     #
     # majorData += retClusters
@@ -656,8 +714,8 @@ if __name__ == '__main__':
         ),
         showlegend=True,
         yaxis=dict(range=[min(df.low)*0.8, max(df.high) * 1.2]),
-    barmode='stack',
-        yaxis2=dict(overlaying='y',side='right'),
+    # barmode='stack',
+        yaxis2=dict(overlaying='y',side='right',range=[min(composite)*0.8, max(composite)*1.2]),
         # annotations=majRetAnnot
     )
     #endregion
@@ -672,7 +730,7 @@ if __name__ == '__main__':
     # plotter(intermediateFig, 'intermediateTrend_daily.html', [intermediateHL_html])
 
 
-    # plotter(majorFig, 'majorTrend_weeklyFrom2008.html', hurstHtml)
+    plotter(majorFig, 'majorTrend_weeklyFrom2008.html', hurstHtml)
     #         # [topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml],
     #         )
 
@@ -681,7 +739,7 @@ if __name__ == '__main__':
     # print(HprojInt)
     # exit()
     #
-    verticalPlot(mainTrace=majorData,others=Hproj,others2=Lproj,others3=hurstTraces,others4=LprojInt,hurst1=hurstProjs,)
+    # verticalPlot(mainTrace=majorData,others=hurstTraces)
     #              # hurst2=hurstProjs[1],hurst3=hurstProjs[2],
     #              # hurst4=hurstProjs[3],hurst5=hurstProjs[4],)
 

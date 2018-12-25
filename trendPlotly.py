@@ -646,7 +646,7 @@ def main():
     tops = Scatter(x=df.date, y=df.high, mode='lines')
     bots = Scatter(x=df.date, y=df.low, mode='lines')
 
-    majorData += [hurstCompositePlot]
+    # majorData += [hurstCompositePlot]
     # majorData+= [tops,bots]
     #
     # majorData += retClusters
@@ -693,7 +693,7 @@ def main():
         showlegend=True,
         yaxis=dict(range=[min(df.low) * 0.8, max(df.high) * 1.2]),
         # barmode='stack',
-        yaxis2=dict(overlaying='y', side='right', range=[min(composite) * 0.8, max(composite) * 1.2]),
+        # yaxis2=dict(overlaying='y', side='right', range=[min(composite) * 0.8, max(composite) * 1.2]),
         # annotations=majRetAnnot
     )
     # endregion

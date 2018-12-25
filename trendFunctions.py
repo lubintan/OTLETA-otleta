@@ -337,7 +337,7 @@ def clusterAlgo2(levelList, close, startX, endX):
     if len(finalClustersAbove) > 0:
         for eachCluster in finalClustersAbove:
             thisLine = Scatter(name='Resistance Cluster', x=[startX, endX], y=[eachCluster, eachCluster],
-                               mode='lines',
+                               mode='lines+text', #'lines+text'
                                opacity=0.7,
                                line=dict(color=clusterColor,
                                          width=clusterWidth,  # newClusterDict[eachMain]*2,
@@ -345,11 +345,11 @@ def clusterAlgo2(levelList, close, startX, endX):
                                          ),
                                # marker=dict(symbol='circle'),
                                hoverinfo='y',  # 'none'
-                               # legendgroup=name,
+                               legendgroup='Resistance Cluster',
                                showlegend=True,
-                               # textposition='middle right',
-                               # textfont=dict(color=color, family='Gravitas One'),
-                               # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                               textposition='middle right',
+                               textfont=dict(color=clusterColor, family='Gravitas One'),
+                               text=['', '%.4f' % (eachCluster)]
                                )
             traces.append(thisLine)
 
@@ -357,7 +357,7 @@ def clusterAlgo2(levelList, close, startX, endX):
     if len(finalClustersBelow) > 0:
         for eachCluster in finalClustersBelow:
             thisLine = Scatter(name='Support Cluster', x=[startX, endX], y=[eachCluster, eachCluster],
-                               mode='lines',
+                               mode='lines+text', #'lines+text'
                                opacity=0.7,
                                line=dict(color=clusterColor,
                                          width=clusterWidth,  # newClusterDict[eachMain]*2,
@@ -365,18 +365,18 @@ def clusterAlgo2(levelList, close, startX, endX):
                                          ),
                                # marker=dict(symbol='circle'),
                                hoverinfo='y',  # 'none'
-                               # legendgroup=name,
+                               legendgroup='Support Cluster',
                                showlegend=True,
-                               # textposition='middle right',
-                               # textfont=dict(color=color, family='Gravitas One'),
-                               # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                               textposition='middle right',
+                               textfont=dict(color=clusterColor, family='Gravitas One'),
+                               text=['', '%.4f' % (eachCluster)]
                                )
             traces.append(thisLine)
 
     if finalAboveLevel > 0:
 
         thisLine = Scatter(name='Resistance Rtcmt', x=[startX, endX], y=[finalAboveLevel, finalAboveLevel],
-                           mode='lines',
+                           mode='lines+text',  # 'lines+text'
                            opacity=0.7,
                            line=dict(color=levelColor,
                                      width=levelWidth,  # newClusterDict[eachMain]*2,
@@ -384,18 +384,18 @@ def clusterAlgo2(levelList, close, startX, endX):
                                      ),
                            # marker=dict(symbol='circle'),
                            hoverinfo='y',  # 'none'
-                           # legendgroup=name,
+                           legendgroup='Resistance Rtcmt',
                            showlegend=True,
-                           # textposition='middle right',
-                           # textfont=dict(color=color, family='Gravitas One'),
-                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           textposition='middle right',
+                           textfont=dict(color=levelColor, family='Gravitas One'),
+                           text=['', '  %.4f' % (finalAboveLevel)]
                            )
         traces.append(thisLine)
 
     if finalBelowLevel > 0:
 
         thisLine = Scatter(name='Support Rtcmt', x=[startX, endX], y=[finalBelowLevel, finalBelowLevel],
-                           mode='lines',
+                           mode='lines+text',  # 'lines+text'
                            opacity=0.7,
                            line=dict(color=levelColor,
                                      width=levelWidth,  # newClusterDict[eachMain]*2,
@@ -403,11 +403,11 @@ def clusterAlgo2(levelList, close, startX, endX):
                                      ),
                            # marker=dict(symbol='circle'),
                            hoverinfo='y',  # 'none'
-                           # legendgroup=name,
+                           legendgroup='Support Rtcmt',
                            showlegend=True,
-                           # textposition='middle right',
-                           # textfont=dict(color=color, family='Gravitas One'),
-                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                           textposition='middle right',
+                           textfont=dict(color=levelColor, family='Gravitas One'),
+                           text=['', '  %.4f' % (finalBelowLevel)]
                            )
         traces.append(thisLine)
 

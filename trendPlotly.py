@@ -1,33 +1,29 @@
 from trendFunctions import *
 from hurstAnalysis2 import *
 
-startTime = time.time()
 
-if __name__ == '__main__':
+def main():
+    startTime = time.time()
 
     df = pd.read_excel('EURUSD Weekly Data for Swing Indicator.xlsx')
-
-
 
     # df = pd.read_csv('EURUSD Weekly Data for Swing Indicator.csv')
 
     # df = pd.read_excel('test1.xlsx')
 
     # Convert Date Format
-    df.columns = ['date','close','open','high','low']
+    df.columns = ['date', 'close', 'open', 'high', 'low']
     df['date'] = pd.to_datetime(df['date'])
 
-    cutoff = len(df) - 200
+    cutoff = len(df) - 0
 
     dfTail = df[cutoff:]
     df = df[:cutoff]
 
-
     # endpoint = df.iloc[-1].date + timedelta(days=(
     #     (df.iloc[-1].date - df.iloc[0].date).days)*0.30)
 
-    endpoint= df.iloc[-1].date+timedelta(days=50)
-
+    endpoint = df.iloc[-1].date + timedelta(days=50)
 
     # endpoint = dfTail.iloc[-1].date + timedelta(days=((df.iloc[-1].date - df.iloc[0].date).days) * 0.10)
 
@@ -39,25 +35,25 @@ if __name__ == '__main__':
     lengthDf = len(df)
     df = pd.DataFrame(df.iloc[0:]).reset_index(drop=True)
 
-#inside bars (fully ignore for trend line calculation)
-#region: INSIDE BARS
+    # inside bars (fully ignore for trend line calculation)
+    # region: INSIDE BARS
 
-    activeDate=[]
-    activeClose=[]
-    activeOpen=[]
-    activeHigh=[]
-    activeLow=[]
-    activeLowFirst=[]
-    
-    insideDate=[]
-    insideClose=[]
-    insideOpen=[]
-    insideHigh=[]
-    insideLow=[]
+    activeDate = []
+    activeClose = []
+    activeOpen = []
+    activeHigh = []
+    activeLow = []
+    activeLowFirst = []
 
-    for i,row in df.iterrows():
+    insideDate = []
+    insideClose = []
+    insideOpen = []
+    insideHigh = []
+    insideLow = []
 
-        if i==0:
+    for i, row in df.iterrows():
+
+        if i == 0:
             activeDate.append(row.date)
             activeClose.append(row.close)
             activeOpen.append(row.open)
@@ -66,8 +62,7 @@ if __name__ == '__main__':
             activeLowFirst.append(row.lowFirst)
             continue
 
-
-        if (activeHigh[-1]>row.high) & (activeLow[-1]<row.low):
+        if (activeHigh[-1] > row.high) & (activeLow[-1] < row.low):
             insideDate.append(row.date)
             insideClose.append(row.close)
             insideOpen.append(row.open)
@@ -85,19 +80,19 @@ if __name__ == '__main__':
     # dfIgnoreInsideBars = pd.DataFrame(columns=['date', 'close', 'open', 'high', 'low'])
 
     noInsideBars = {
-                    'date':activeDate,
-                    'close':activeClose,
-                    'open':activeOpen,
-                    'high':activeHigh,
-                    'low':activeLow,
-                    'lowFirst':activeLowFirst,
-                    }
+        'date': activeDate,
+        'close': activeClose,
+        'open': activeOpen,
+        'high': activeHigh,
+        'low': activeLow,
+        'lowFirst': activeLowFirst,
+    }
     insideBarsOnly = {
-                    'date': insideDate,
-                    'close': insideClose,
-                    'open': insideOpen,
-                    'high': insideHigh,
-                    'low': insideLow,
+        'date': insideDate,
+        'close': insideClose,
+        'open': insideOpen,
+        'high': insideHigh,
+        'low': insideLow,
     }
     dfIgnoreInsideBars = pd.DataFrame.from_dict(noInsideBars)
     dfInsideBarsOnly = pd.DataFrame.from_dict(insideBarsOnly)
@@ -107,42 +102,38 @@ if __name__ == '__main__':
     # dfIgnoreInsideBars = pd.concat([df[:DELAY], dfIgnoreInsideBars])
     # dfIgnoreInsideBars = dfIgnoreInsideBars.reset_index(drop=True)
 
-#endregion INSIDE BARS
+    # endregion INSIDE BARS
 
-
-#region: OUTSIDE BARS
+    # region: OUTSIDE BARS
     # dfIgnoreInsideBars['outside'] = (dfIgnoreInsideBars.high>dfIgnoreInsideBars.shift(1).high) & (dfIgnoreInsideBars.low<dfIgnoreInsideBars.shift(1).low)
-
 
     # print(dfIgnoreInsideBars)
     # exit()
 
-#endregion
+    # endregion
 
     trendLine1, trendLine2, trendLine3 = getTrendLine(dfIgnoreInsideBars)
 
-
-
-#### TRENDLINE PROCESSING  END #####
+    #### TRENDLINE PROCESSING  END #####
 
     # topAndBottomPoints, HH_bars, LL_bars, HL_bars, LH_bars
-    minorStuff = getTrendTopsAndBottoms(trendLine1,df)
-    intermediateStuff = getTrendTopsAndBottoms(trendLine2,df)
-    majorStuff = getTrendTopsAndBottoms(trendLine3,df)
+    minorStuff = getTrendTopsAndBottoms(trendLine1, df)
+    intermediateStuff = getTrendTopsAndBottoms(trendLine2, df)
+    majorStuff = getTrendTopsAndBottoms(trendLine3, df)
 
-    #(majorStuff['HH'] gives index of a top, and the number of bars to the next top.)
+    # (majorStuff['HH'] gives index of a top, and the number of bars to the next top.)
 
     # get little highs and lows
     lps = getLps(df)
     hps = getHps(df)
 
-    lpsLows = lps[['date','low']].copy()
-    hpsHighs = hps[['date','high']].copy()
+    lpsLows = lps[['date', 'low']].copy()
+    hpsHighs = hps[['date', 'high']].copy()
 
-    lpshps=pd.concat([lpsLows,hpsHighs],sort=True)
+    lpshps = pd.concat([lpsLows, hpsHighs], sort=True)
     lpshps = lpshps.sort_values(by=['date'])
 
-    lps = Scatter(mode='markers',marker=dict(color='navy',size=10),x=lps.date,y=lps.low)
+    lps = Scatter(mode='markers', marker=dict(color='navy', size=10), x=lps.date, y=lps.low)
     hps = Scatter(mode='markers', marker=dict(color='navy', size=10), x=hps.date, y=hps.high)
 
     # plot H L data
@@ -151,31 +142,34 @@ if __name__ == '__main__':
     majorHL_html = plotTopBotHist(majorStuff)
 
     # region:trends
-    minorUps, minorDowns, minorTopsBottoms, stringTrendMin, firstDateMin, lastDateMin, currTrendMin = trendFinder(minorStuff)
-    intermediateUps, intermediateDowns, intermediateTopsBottoms, stringTrendInt, firstDateInt, lastDateInt, currTrendInt = trendFinder(intermediateStuff)
-    
-    
-    majorUps, majorDowns, majorTopsBottoms, stringTrendMaj, firstDateMaj, lastDateMaj, currTrendMaj = trendFinder(majorStuff,barHeight=0.03)
-    bigTopBotsMaj = majorTopsBottoms[(majorTopsBottoms.bigTop==True) | (majorTopsBottoms.bigBot == True) ]
-    #endregion
+    minorUps, minorDowns, minorTopsBottoms, stringTrendMin, firstDateMin, lastDateMin, currTrendMin = trendFinder(
+        minorStuff)
+    intermediateUps, intermediateDowns, intermediateTopsBottoms, stringTrendInt, firstDateInt, lastDateInt, currTrendInt = trendFinder(
+        intermediateStuff)
 
-    #region:derivative trends
-    
+    majorUps, majorDowns, majorTopsBottoms, stringTrendMaj, firstDateMaj, lastDateMaj, currTrendMaj = trendFinder(
+        majorStuff, barHeight=0.03)
+    bigTopBotsMaj = majorTopsBottoms[(majorTopsBottoms.bigTop == True) | (majorTopsBottoms.bigBot == True)]
+    # endregion
+
+    # region:derivative trends
+
     firstDateList = [firstDateMaj]
     lastDateList = [lastDateMaj]
     bigTopBotsMajDrvd = bigTopBotsMaj
 
     firstDateMajDrvdFinal = None
     lastDateMajDrvdFinal = None
-    
+
     for counter in range(11):
         majorUpsDrvd, majorDownsDrvd, majorTopsBottomsDrvd, stringTrendMajDrvd, firstDateMajDrvd, lastDateMajDrvd, currTrendMajDrvd = trendFinder(
             bigTopBotsMajDrvd, barHeight=0.03, upColor='navy', downColor='grey')
-        
-        if (firstDateMajDrvd!=None) and (lastDateMajDrvd!=None):
+
+        if (firstDateMajDrvd != None) and (lastDateMajDrvd != None):
             firstDateList.append(firstDateMajDrvd)
             lastDateList.append(lastDateMajDrvd)
-            bigTopBotsMajDrvd = majorTopsBottomsDrvd[(majorTopsBottomsDrvd.bigTop == True) | (majorTopsBottomsDrvd.bigBot == True)]
+            bigTopBotsMajDrvd = majorTopsBottomsDrvd[
+                (majorTopsBottomsDrvd.bigTop == True) | (majorTopsBottomsDrvd.bigBot == True)]
         else:
             date1 = df.iloc[df.high.idxmax].date
             date2 = df.iloc[df.low.idxmin].date
@@ -187,22 +181,20 @@ if __name__ == '__main__':
                 firstDateMajDrvdFinal = date1
                 lastDateMajDrvdFinal = date2
             break
-            
-    #endregion
 
+    # endregion
 
-    bigTopListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigTop==True]
+    bigTopListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigTop == True]
     bigBotListInt = intermediateTopsBottoms[intermediateTopsBottoms.bigBot == True]
 
     # bigTopListMaj = majorTopsBottoms[majorTopsBottoms.bigTop==True]
     # bigBotListMaj = majorTopsBottoms[majorTopsBottoms.bigBot == True]
-    # 
+    #
     # bigTops = Scatter(mode='markers',marker=dict(color='orange',size=10),x=bigTopListMaj.date,y=bigTopListMaj.point)
     # bigBots = Scatter(mode='markers', marker=dict(color='black', size=10), x=bigBotListMaj.date, y=bigBotListMaj.point)
 
+    # region:Gann Angles
 
-    #region:Gann Angles
-    
     # x0_date = lastDateInt
     # x0_idx = df[df.date == lastDateInt].index[0]
     # xLast_date = df.iloc[-1].date
@@ -210,7 +202,7 @@ if __name__ == '__main__':
     # y0 = float(trendLine2[trendLine2.date == lastDateInt].point)
     # scale = 0.004
     # trendUp = currTrendInt > 0
-    # 
+    #
     # intGann = [
     #     plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp =trendUp,ratio=0,scale=1,name='Flat',color='grey'),
     #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1, scale=scale, name='1x1',color='orange'),
@@ -219,34 +211,33 @@ if __name__ == '__main__':
     #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/4, scale=scale, name='4x1',color='green'),
     #     plotGannAngles(x0_date, x0_idx, xLast_date, xLast_idx, y0, trendUp =trendUp, ratio=1.0/2, scale=scale, name='2x1',color='deepskyblue'),
     # ]
-    #endregion
+    # endregion
 
-    #region: time retracement lines
+    # region: time retracement lines
 
-    pointFirst = float(trendLine2[trendLine2.date==firstDateInt].point)
-    pointLast = float(trendLine2[trendLine2.date==lastDateInt].point)
-    intTimeRets = plotTimeRets(firstDateInt,lastDateInt,
-                               maxHeight=max([pointFirst,pointLast])*1.05,
-                               minHeight =min([pointFirst,pointLast])*0.95, )
-    #endregion
+    pointFirst = float(trendLine2[trendLine2.date == firstDateInt].point)
+    pointLast = float(trendLine2[trendLine2.date == lastDateInt].point)
+    intTimeRets = plotTimeRets(firstDateInt, lastDateInt,
+                               maxHeight=max([pointFirst, pointLast]) * 1.05,
+                               minHeight=min([pointFirst, pointLast]) * 0.95, )
+    # endregion
 
     # region: charts for projection data
     # minorHL_html = trendProjector(minorTopsBottoms)
     # intermediateHL_html = trendProjector(intermediateTopsBottoms)
     # topProjHtml,botProjHtml,HHHtml,LHHtml,LLHtml,HLHtml = trendProjector(majorTopsBottoms, df.iloc[-1].date)
 
-    HprojInt, LprojInt, HprojFigInt, LprojFigInt, latestDateInt = trendProjector(intermediateTopsBottoms, df.iloc[-1].date,highColor='crimson', lowColor='pink')
-    Hproj,Lproj, HprojFig, LprojFig, latestDateMaj = trendProjector(majorTopsBottoms, df.iloc[-1].date)
-    #endregion
+    HprojInt, LprojInt, HprojFigInt, LprojFigInt, latestDateInt = trendProjector(intermediateTopsBottoms,
+                                                                                 df.iloc[-1].date, highColor='crimson',
+                                                                                 lowColor='pink')
+    Hproj, Lproj, HprojFig, LprojFig, latestDateMaj = trendProjector(majorTopsBottoms, df.iloc[-1].date)
+    # endregion
 
     # region: Hurst Cycles
     # decision: hurst graph projection to always be in days resolution, so that it looks smooth when the period is small eg. 1.625 weeks
     hurst, avgList, hurstStartDate = mainHurst(df.drop(columns=['lowFirst']))
-    # avgList = []
+    avgList = []
     hurstProjs = []
-
-
-
 
     # if hurst > 2:
     #     for i in range(len(hurst)):
@@ -271,49 +262,47 @@ if __name__ == '__main__':
 
     # find lowest point from 2008-09
 
-
-
-    lowestBottom0809 = majorTopsBottoms[(majorTopsBottoms.bottom==True) & (majorTopsBottoms.date > datetime(2008,1,1))
-                           & (majorTopsBottoms.date < datetime(2009,12,31))]
+    lowestBottom0809 = majorTopsBottoms[
+        (majorTopsBottoms.bottom == True) & (majorTopsBottoms.date > datetime(2008, 1, 1))
+        & (majorTopsBottoms.date < datetime(2009, 12, 31))]
     lowestBottom0809Date = lowestBottom0809[lowestBottom0809.point == min(lowestBottom0809.point)].date
-
 
     if len(avgList) == 0:
         hurstNominalList_weeks = [
-            #years
-               938.571, #18,
-               469.286,#9,
-               234.643, #4.5
-               156.429,  #3
-            #months
-               78.2144,#18
-               52.1429,#12
-               39.1072, #9
-            #weeks
-            26, #26
-            13, #13
-            6, #6.5
-            3, #3.25
-            1, #1.625
+            # years
+            938.571,  # 18,
+            469.286,  # 9,
+            234.643,  # 4.5
+            156.429,  # 3
+            # months
+            78.2144,  # 18
+            52.1429,  # 12
+            39.1072,  # 9
+            # weeks
+            26,  # 26
+            13,  # 13
+            6,  # 6.5
+            3,  # 3.25
+            1,  # 1.625
         ]
 
         nominalAmplitudes = [
-            14,13,12,11,
-            9,8,7,
-            5,4,3,2,1
+            14, 13, 12, 11,
+            9, 8, 7,
+            5, 4, 3, 2, 1
         ]
-        nonNomAmps=[]
+        nonNomAmps = []
 
     else:
         hurstNominalList_weeks = [
             # years
-               938.571 ,  # 18,
-               469.286 ,  # 9,
+            938.571,  # 18,
+            469.286,  # 9,
             #    234.643 ,  # 4.5
-               156.429 ,  # 3
+            156.429,  # 3
             # months
             #    78.2144 ,  # 18
-               52.1429 ,  # 12
+            52.1429,  # 12
             #    39.1072 ,  # 9
             # weeks
             # 26,  # 26
@@ -323,14 +312,14 @@ if __name__ == '__main__':
             1  # 1.625
         ]
         nominalAmplitudes = [
-            14,13,11,
+            14, 13, 11,
             8,
-            3,2,1
+            3, 2, 1
         ]
-        nonNomAmps=[
+        nonNomAmps = [
             12,
-            9,7,
-            5,4,
+            9, 7,
+            5, 4,
         ]
 
     # projecting nominal hurst dates
@@ -345,46 +334,44 @@ if __name__ == '__main__':
     #             break
     #     hurstNomProj.append(thisCycleSet)
 
-
-
     hurstTraces = []
-
 
     lowestBottom0809Date = pd.Timestamp(lowestBottom0809Date.values[0])
 
-    hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=None)
+    if len(dfTail > 0):
+        hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=dfTail.iloc[-1].date)
+    else:
+        hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=df.iloc[-1].date)
     composite = np.zeros(len(hurstX))
 
     for idx in range(len(hurstNominalList_weeks)):
-
-        sine = -1*np.cos(2*np.pi*hurstXInt/(hurstNominalList_weeks[idx]*7)) * (nominalAmplitudes[idx])
+        sine = -1 * np.cos(2 * np.pi * hurstXInt / (hurstNominalList_weeks[idx] * 7)) * (nominalAmplitudes[idx])
 
         composite += sine
 
-        hurstDf = pd.DataFrame(data=sine,columns=['point'])
+        hurstDf = pd.DataFrame(data=sine, columns=['point'])
         hurstDf['date'] = pd.to_datetime(hurstX)
 
-        hurstSinePlot = Scatter(name='%i wks'%(hurstNominalList_weeks[idx]),
-                                mode='lines',x=hurstDf.date,y=hurstDf.point,
+        hurstSinePlot = Scatter(name='%i wks' % (hurstNominalList_weeks[idx]),
+                                mode='lines', x=hurstDf.date, y=hurstDf.point,
                                 hoverinfo='x+name')
 
         hurstTraces += [hurstSinePlot]
 
     ####### do the non-nominal averages #######
     if len(avgList) > 0:
-        hurstX, hurstXInt = hurstSines(lowestPoint=hurstStartDate, df=df,projLimitDate=None)
+        hurstX, hurstXInt = hurstSines(lowestPoint=hurstStartDate, df=df, projLimitDate=dfTail.iloc[-1].date)
 
         for idx in range(len(avgList)):
-
-            sine = -1*np.cos(2*np.pi*hurstXInt/(avgList[idx]*7)) * (nonNomAmps[idx])
+            sine = -1 * np.cos(2 * np.pi * hurstXInt / (avgList[idx] * 7)) * (nonNomAmps[idx])
 
             composite += sine
 
-            hurstDf = pd.DataFrame(data=sine,columns=['point'])
+            hurstDf = pd.DataFrame(data=sine, columns=['point'])
             hurstDf['date'] = pd.to_datetime(hurstX)
 
-            hurstSinePlot = Scatter(name='%i wks'%(avgList[idx]),
-                                    mode='lines',x=hurstDf.date,y=hurstDf.point,
+            hurstSinePlot = Scatter(name='%i wks' % (avgList[idx]),
+                                    mode='lines', x=hurstDf.date, y=hurstDf.point,
                                     hoverinfo='x+name')
 
             hurstTraces += [hurstSinePlot]
@@ -392,7 +379,8 @@ if __name__ == '__main__':
     # composite plot
     hurstDf = pd.DataFrame(data=composite, columns=['point'])
     hurstDf['date'] = pd.to_datetime(hurstX)
-    hurstCompositePlot = Scatter(name= 'Composite', mode='lines', x=hurstDf.date, y=hurstDf.point, line=dict(dash='dash'),
+    hurstCompositePlot = Scatter(name='Composite', mode='lines', x=hurstDf.date, y=hurstDf.point,
+                                 line=dict(dash='dash'),
                                  yaxis='y2',
                                  hoverinfo='x+name',
                                  )
@@ -403,31 +391,28 @@ if __name__ == '__main__':
     # else:
     endpoint = df.iloc[-1].date + timedelta(weeks=12)
     xaxisRange = [
-                # df.iloc[0].date,
-                df.iloc[-1].date,
-                  endpoint
-                    ]
+        # df.iloc[0].date,
+        df.iloc[-1].date,
+        endpoint
+    ]
 
-    hurstFig = Figure(data=hurstTraces, layout=Layout(xaxis=dict(range=xaxisRange),showlegend=True))
+    hurstFig = Figure(data=hurstTraces, layout=Layout(xaxis=dict(range=xaxisRange), showlegend=True))
 
     hurstHtml = plotly.offline.plot(hurstFig,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': True
-                                       }),
-
-
-
+                                    show_link=False,
+                                    output_type='div',
+                                    include_plotlyjs=False,
+                                    # filename='minorHLData.html',
+                                    auto_open=False,
+                                    config={'displaylogo': False,
+                                            'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                                       'zoomOut2d',
+                                                                       'resetScale2d', 'hoverCompareCartesian',
+                                                                       'lasso2d'],
+                                            'displayModeBar': True
+                                            }),
 
     # endregion
-
 
     # region:retracement lines
     retLevels = []
@@ -449,31 +434,31 @@ if __name__ == '__main__':
     #                                color=colorList[i])
     #     minRetracements += thisRet
     #     retLevels.append(thisRetLevels)
-    #endregion
+    # endregion
 
     # region:maj retracements
     #
     #
-    majRetLines, majRetLevels, majLowProjLevels = retracementLines(majorTopsBottoms.iloc[-2].point,majorTopsBottoms.iloc[-1].point,
-                              [majorTopsBottoms.iloc[-2].date, endpoint],
-                              name='Maj Retrace',
-                              color=colorList[0],
-                                previousLowProjLevels=lowProjLevels
-                              )
+    majRetLines, majRetLevels, majLowProjLevels = retracementLines(majorTopsBottoms.iloc[-2].point,
+                                                                   majorTopsBottoms.iloc[-1].point,
+                                                                   [majorTopsBottoms.iloc[-2].date, endpoint],
+                                                                   name='Maj Retrace',
+                                                                   color=colorList[0],
+                                                                   previousLowProjLevels=lowProjLevels
+                                                                   )
     # retLevels.append(majRetLevels)
     # retLinesList.append(majRetLines)
     # lowProjLevels += majLowProjLevels
 
     for i in range(len(firstDateList)):
-
-
-        majTrendRetLines, majTrendRetLevels, majTrendLowProjLevels = retracementLines(trendLine3[trendLine3.date==firstDateList[i]].point.values[0],
-                                                               trendLine3[trendLine3.date==lastDateList[i]].point.values[0],
-                                       [firstDateList[i],endpoint],
-                                            name='Maj Trend Retrace %i'%(i),
-                                            color=colorList[(i+1)%(len(colorList))],
-                                previousLowProjLevels=lowProjLevels
-                                            )
+        majTrendRetLines, majTrendRetLevels, majTrendLowProjLevels = retracementLines(
+            trendLine3[trendLine3.date == firstDateList[i]].point.values[0],
+            trendLine3[trendLine3.date == lastDateList[i]].point.values[0],
+            [firstDateList[i], endpoint],
+            name='Maj Trend Retrace %i' % (i),
+            color=colorList[(i + 1) % (len(colorList))],
+            previousLowProjLevels=lowProjLevels
+            )
 
         retLevels.append(majTrendRetLevels)
         retLinesList.append(majTrendRetLines)
@@ -486,7 +471,6 @@ if __name__ == '__main__':
     firstPoint = None
     lastPoint = None
 
-
     if highPoint1 > highPoint2:
         firstPoint = highPoint1
         lastPoint = lowPoint2
@@ -494,16 +478,15 @@ if __name__ == '__main__':
         firstPoint = lowPoint1
         lastPoint = highPoint2
 
-
     majTrendRetLines, majTrendRetLevels, majTrendLowProjLevels = retracementLines(
         firstPoint,
         lastPoint,
         [firstDateMajDrvdFinal,
          endpoint],
         name='Maj Max Trend Retrace',
-        color=colorList[(len(firstDateList)+1) % (len(colorList))],
+        color=colorList[(len(firstDateList) + 1) % (len(colorList))],
         previousLowProjLevels=lowProjLevels
-        )
+    )
 
     retLevels.append(majTrendRetLevels)
     retLinesList.append(majTrendRetLines)
@@ -511,103 +494,101 @@ if __name__ == '__main__':
 
     # remove duplicates from
 
-    #endregion
+    # endregion
 
     # retracement clusters
     # retClusters = getClusters(retLevels, df.iloc[-1].date, endpoint)
 
-    clusters = clusterAlgo2(retLevels,df.iloc[-1].close,startX=df.iloc[-2].date,endX=endpoint)
+    clusters = clusterAlgo2(retLevels, df.iloc[-1].close, startX=df.iloc[-2].date, endX=endpoint)
 
+    # endregion
 
+    # region:signal tops
+    intSignalTops = signalTops(df, bigTops=bigTopListInt)
+    intSignalBots = signalBots(df, bigBots=bigBotListInt)
+    # endregion
 
-    #endregion
-
-    #region:signal tops
-    intSignalTops = signalTops(df,bigTops=bigTopListInt)
-    intSignalBots = signalBots(df,bigBots=bigBotListInt)
-    #endregion
-    
-    #region: active bars and inside bars and outside bars
-    insideBars = Ohlc(name='Inside Bars',x=dfInsideBarsOnly.date,open=dfInsideBarsOnly.open,close=dfInsideBarsOnly.close,
-                    high=dfInsideBarsOnly.high,low=dfInsideBarsOnly.low,
-                    opacity=0.5,
-                    line=dict(width=1),
-                   # hoverinfo='none',
-                   # increasing=dict(line=dict(color= '#17BECF')),
-                   # decreasing=dict(line=dict(color= '#17BECF')),
-                      increasing=dict(line=dict(color='black')),
-                      decreasing=dict(line=dict(color='black')),
-                   )
-
-    activeBars = Ohlc(name='Active Bars',x=dfIgnoreInsideBars.date,open=dfIgnoreInsideBars.open,close=dfIgnoreInsideBars.close,high=dfIgnoreInsideBars.high,low=dfIgnoreInsideBars.low,
-                    opacity=0.6,
-                    line=dict(width=2.5),
+    # region: active bars and inside bars and outside bars
+    insideBars = Ohlc(name='Inside Bars', x=dfInsideBarsOnly.date, open=dfInsideBarsOnly.open,
+                      close=dfInsideBarsOnly.close,
+                      high=dfInsideBarsOnly.high, low=dfInsideBarsOnly.low,
+                      opacity=0.5,
+                      line=dict(width=1),
                       # hoverinfo='none',
-                    # hoverlabel=dict(namelengthsrc='none'),
-                      # showlegend=False,
-                   # increasing=dict(line=dict(color= '#17BECF')),
-                   # decreasing=dict(line=dict(color= '#17BECF')),
+                      # increasing=dict(line=dict(color= '#17BECF')),
+                      # decreasing=dict(line=dict(color= '#17BECF')),
                       increasing=dict(line=dict(color='black')),
                       decreasing=dict(line=dict(color='black')),
-                   )
-    
+                      )
+
+    activeBars = Ohlc(name='Active Bars', x=dfIgnoreInsideBars.date, open=dfIgnoreInsideBars.open,
+                      close=dfIgnoreInsideBars.close, high=dfIgnoreInsideBars.high, low=dfIgnoreInsideBars.low,
+                      opacity=0.6,
+                      line=dict(width=2.5),
+                      # hoverinfo='none',
+                      # hoverlabel=dict(namelengthsrc='none'),
+                      # showlegend=False,
+                      # increasing=dict(line=dict(color= '#17BECF')),
+                      # decreasing=dict(line=dict(color= '#17BECF')),
+                      increasing=dict(line=dict(color='black')),
+                      decreasing=dict(line=dict(color='black')),
+                      )
 
     dfOutsideHighFirst = dfIgnoreInsideBars[dfIgnoreInsideBars['outside'] & (~dfIgnoreInsideBars['lowFirst'])]
     dfOutsideLowFirst = dfIgnoreInsideBars[dfIgnoreInsideBars['outside'] & dfIgnoreInsideBars['lowFirst']]
 
     OHF = Ohlc(name='Outside High First', x=dfOutsideHighFirst.date, open=dfOutsideHighFirst.open,
-                  close=dfOutsideHighFirst.close, high=dfOutsideHighFirst.high, low=dfOutsideHighFirst.low,
-                  opacity=1,
-                  line=dict(width=2.5),
-                  increasing=dict(line=dict(color= 'black')),
-                  decreasing=dict(line=dict(color= 'black')),
-                  hoverinfo='none',
-                      )
+               close=dfOutsideHighFirst.close, high=dfOutsideHighFirst.high, low=dfOutsideHighFirst.low,
+               opacity=1,
+               line=dict(width=2.5),
+               increasing=dict(line=dict(color='black')),
+               decreasing=dict(line=dict(color='black')),
+               hoverinfo='none',
+               )
 
     OLF = Ohlc(name='Outside Low First', x=dfOutsideLowFirst.date, open=dfOutsideLowFirst.open,
                close=dfOutsideLowFirst.close, high=dfOutsideLowFirst.high, low=dfOutsideLowFirst.low,
                opacity=1,
                line=dict(width=2.5),
-               increasing=dict(line=dict(color= 'black')),
-               decreasing=dict(line=dict(color= 'black')),
+               increasing=dict(line=dict(color='black')),
+               decreasing=dict(line=dict(color='black')),
                hoverinfo='none',
                )
-    #endregion
-    
+    # endregion
+
     # region:all bars
     allBars = Ohlc(name='All Bars', x=df.date, open=df.open,
-                      close=df.close, high=df.high, low=df.low,
-                      opacity=0.8,
-                      line=dict(width=2.5),
-                      # hoverinfo='none',
-                      # hoverlabel=dict(namelengthsrc='none'),
-                      # showlegend=False,
-                      # increasing=dict(line=dict(color= '#17BECF')),
-                      # decreasing=dict(line=dict(color= '#17BECF')),
-                      increasing=dict(line=dict(color='black')),
-                      decreasing=dict(line=dict(color='black')),
-                      )
-    #endregion
+                   close=df.close, high=df.high, low=df.low,
+                   opacity=0.8,
+                   line=dict(width=2.5),
+                   # hoverinfo='none',
+                   # hoverlabel=dict(namelengthsrc='none'),
+                   # showlegend=False,
+                   # increasing=dict(line=dict(color= '#17BECF')),
+                   # decreasing=dict(line=dict(color= '#17BECF')),
+                   increasing=dict(line=dict(color='black')),
+                   decreasing=dict(line=dict(color='black')),
+                   )
+    # endregion
 
     # region:tail bars
     tailBars = Ohlc(name='Tail Bars', x=dfTail.date, open=dfTail.open,
-                      close=dfTail.close, high=dfTail.high, low=dfTail.low,
-                      opacity=0.5,
-                      line=dict(width=2.5),
-                      # hoverinfo='none',
-                      # hoverlabel=dict(namelengthsrc='none'),
-                      # showlegend=False,
-                      # increasing=dict(line=dict(color= '#17BECF')),
-                      # decreasing=dict(line=dict(color= '#17BECF')),
-                      increasing=dict(line=dict(color='navy')),
-                      decreasing=dict(line=dict(color='navy')),
-                      )
-    #endregion
+                    close=dfTail.close, high=dfTail.high, low=dfTail.low,
+                    opacity=0.5,
+                    line=dict(width=2.5),
+                    # hoverinfo='none',
+                    # hoverlabel=dict(namelengthsrc='none'),
+                    # showlegend=False,
+                    # increasing=dict(line=dict(color= '#17BECF')),
+                    # decreasing=dict(line=dict(color= '#17BECF')),
+                    increasing=dict(line=dict(color='navy')),
+                    decreasing=dict(line=dict(color='navy')),
+                    )
+    # endregion
 
-
-    #region:trendlines
+    # region:trendlines
     # plot minor trendline points and lines
-    minor, minorTops, minorBottoms = plotTrendlines(trendLine1,minorStuff,name='Minor', color='grey',width=4)
+    minor, minorTops, minorBottoms = plotTrendlines(trendLine1, minorStuff, name='Minor', color='grey', width=4)
 
     # plot intermediate trendline points and lines
     intermediate, intermediateTops, intermediateBottoms = plotTrendlines(trendLine2, intermediateStuff,
@@ -615,55 +596,55 @@ if __name__ == '__main__':
 
     # plot major trendline points and lines
     major, majorTops, majorBottoms = plotTrendlines(trendLine3, majorStuff, name='Major', color='navy', width=3)
-    #endregion
+    # endregion
 
-    #region:minorData to plot
+    # region:minorData to plot
     minorData = [insideBars, activeBars,
                  # OHF, OLF,
                  minor, minorTops, minorBottoms,
-                 minorUps,minorDowns
+                 minorUps, minorDowns
                  ]
-    #endregion
+    # endregion
 
-    #region: intermediate data to plot
+    # region: intermediate data to plot
     intermediateData = [
-    # insideBars,
-                        activeBars,
-                        # OHF, OLF,
-                        intermediate, intermediateTops, intermediateBottoms,
-                        intermediateUps, intermediateDowns
-                        ]
-                          # intGann +
+        # insideBars,
+        activeBars,
+        # OHF, OLF,
+        intermediate, intermediateTops, intermediateBottoms,
+        intermediateUps, intermediateDowns
+    ]
+    # intGann +
     # intermediateData += intRetLines
     intermediateData += intTimeRets
-                          # intSignalTops + intSignalBots
-                       # + [bigTops,bigBots]
-    #endregion
+    # intSignalTops + intSignalBots
+    # + [bigTops,bigBots]
+    # endregion
 
-    #region: major data to plot
+    # region: major data to plot
     majorData = [
         # insideBars,
-                    # minor,
-                    # minorTops, minorBottoms,
-                    # activeBars,
-                    # OHF, OLF,
+        # minor,
+        # minorTops, minorBottoms,
+        # activeBars,
+        # OHF, OLF,
         # intermediate,
         allBars, tailBars,
         major,
         # majorTops, majorBottoms,
 
-                 # majorUps, majorDowns,
+        # majorUps, majorDowns,
         # majorUpsDrvd, majorDownsDrvd,
-                # lps,hps,
-                 ]
+        # lps,hps,
+    ]
 
     # for eachRet in retLinesList:
     #     majorData += eachRet
     #
     majorData += clusters
 
-    tops = Scatter(x=df.date,y=df.high,mode='lines')
-    bots = Scatter(x=df.date,y=df.low,mode='lines')
+    tops = Scatter(x=df.date, y=df.high, mode='lines')
+    bots = Scatter(x=df.date, y=df.low, mode='lines')
 
     majorData += [hurstCompositePlot]
     # majorData+= [tops,bots]
@@ -673,36 +654,33 @@ if __name__ == '__main__':
     # majorData += Lproj
     # majorData += minRetracements
 
+    # endregion
 
-    #endregion
-
-
-
-    #region:layouts
-    layoutMin = Layout(
-        title = 'EUR/USD Weekly<br>'+ stringTrendMin,
-        xaxis=dict(
-            rangeslider=dict(
-                visible=False
-            ),
-            showgrid=True,
-        ),
-        showlegend=True,
-        # annotations=minorAnnot
-    )
-
-    layoutInt = Layout(
-        title='EUR/USD Weekly<br>' + stringTrendInt,
-        xaxis=dict(
-            rangeslider=dict(
-                visible=False
-            ),
-            showgrid=True,
-        ),
-        showlegend=True,
-        yaxis = dict(range=[-0.1,max(df.high)*1.2])
-        # annotations=minorAnnot
-    )
+    # region:layouts
+    # layoutMin = Layout(
+    #     title='EUR/USD Weekly<br>' + stringTrendMin,
+    #     xaxis=dict(
+    #         rangeslider=dict(
+    #             visible=False
+    #         ),
+    #         showgrid=True,
+    #     ),
+    #     showlegend=True,
+    #     # annotations=minorAnnot
+    # )
+    #
+    # layoutInt = Layout(
+    #     title='EUR/USD Weekly<br>' + stringTrendInt,
+    #     xaxis=dict(
+    #         rangeslider=dict(
+    #             visible=False
+    #         ),
+    #         showgrid=True,
+    #     ),
+    #     showlegend=True,
+    #     yaxis=dict(range=[-0.1, max(df.high) * 1.2])
+    #     # annotations=minorAnnot
+    # )
 
     layoutMaj = Layout(
         title='EUR/USD Weekly<br>' + stringTrendMaj,
@@ -713,22 +691,21 @@ if __name__ == '__main__':
             showgrid=True,
         ),
         showlegend=True,
-        yaxis=dict(range=[min(df.low)*0.8, max(df.high) * 1.2]),
-    # barmode='stack',
-        yaxis2=dict(overlaying='y',side='right',range=[min(composite)*0.8, max(composite)*1.2]),
+        yaxis=dict(range=[min(df.low) * 0.8, max(df.high) * 1.2]),
+        # barmode='stack',
+        yaxis2=dict(overlaying='y', side='right', range=[min(composite) * 0.8, max(composite) * 1.2]),
         # annotations=majRetAnnot
     )
-    #endregion
+    # endregion
 
-    minorFig = Figure(data=minorData, layout=layoutMin)
-    intermediateFig = Figure(data=intermediateData, layout=layoutInt)
+    # minorFig = Figure(data=minorData, layout=layoutMin)
+    # intermediateFig = Figure(data=intermediateData, layout=layoutInt)
     majorFig = Figure(data=majorData, layout=layoutMaj)
 
     # plotly.offline.plot(fig,image='png',image_filename='3trends',image_width=7200,image_height=1200)
 
     # plotter(minorFig,'minorTrend_daily.html', [minorHL_html])
     # plotter(intermediateFig, 'intermediateTrend_daily.html', [intermediateHL_html])
-
 
     plotter(majorFig, 'majorTrend_weeklyFrom2008.html', hurstHtml)
     #         # [topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml],
@@ -744,5 +721,12 @@ if __name__ == '__main__':
     #              # hurst4=hurstProjs[3],hurst5=hurstProjs[4],)
 
     endTime = time.time()
-    elapsed = endTime-startTime
-    print("Operation took a total of %.2f seconds." %(elapsed))
+    elapsed = endTime - startTime
+    print("Operation took a total of %.2f seconds." % (elapsed))
+
+
+    return majorFig, hurstFig
+
+if __name__ == '__main__':
+
+    main()

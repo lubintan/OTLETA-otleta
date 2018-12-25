@@ -283,8 +283,8 @@ def clusterAlgo2(levelList, close, startX, endX):
         clustersAboveDist = []
         clustersBelow = {}
         clustersBelowDist = []
-        
-        
+
+
         for each in clusters:
             avgDist = (sum(each) / len(each))
             if (avgDist > close):
@@ -297,7 +297,8 @@ def clusterAlgo2(levelList, close, startX, endX):
                         
                 
         if len(clustersAboveDist) > 0:
-            finalClustersAbove =clustersAbove[min(clustersAboveDist)]
+            # finalClustersAbove =clustersAbove[min(clustersAboveDist)]
+            finalClustersAbove = clustersAboveDist
         else: # no above clusters
             aboveMin = np.inf
             for eachRange in levelList:
@@ -309,7 +310,8 @@ def clusterAlgo2(levelList, close, startX, endX):
                         aboveMin = aboveDist
 
         if len(clustersBelowDist) > 0:
-            finalClustersBelow = clustersBelow[min(clustersBelowDist)]
+            # finalClustersBelow = clustersBelow[min(clustersBelowDist)]
+            finalClustersBelow = clustersBelowDist
         else:  # no below clusters
             belowMin = np.inf
             for eachRange in levelList:
@@ -333,47 +335,47 @@ def clusterAlgo2(levelList, close, startX, endX):
     traces = []
 
     if len(finalClustersAbove) > 0:
-
-        thisLine = Scatter(name='Resistance Cluster', x=[startX, endX], y=[np.mean(finalClustersAbove), np.mean(finalClustersAbove)],
-                           mode='lines',
-                           opacity=0.7,
-                           line=dict(color=clusterColor,
-                                     width=clusterWidth,  # newClusterDict[eachMain]*2,
-                                     dash=clusterDash,
-                                     ),
-                           # marker=dict(symbol='circle'),
-                           hoverinfo='y',  # 'none'
-                           # legendgroup=name,
-                           showlegend=True,
-                           # textposition='middle right',
-                           # textfont=dict(color=color, family='Gravitas One'),
-                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
-                           )
-        traces.append(thisLine)
+        for eachCluster in finalClustersAbove:
+            thisLine = Scatter(name='Resistance Cluster', x=[startX, endX], y=[eachCluster, eachCluster],
+                               mode='lines',
+                               opacity=0.7,
+                               line=dict(color=clusterColor,
+                                         width=clusterWidth,  # newClusterDict[eachMain]*2,
+                                         dash=clusterDash,
+                                         ),
+                               # marker=dict(symbol='circle'),
+                               hoverinfo='y',  # 'none'
+                               # legendgroup=name,
+                               showlegend=True,
+                               # textposition='middle right',
+                               # textfont=dict(color=color, family='Gravitas One'),
+                               # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                               )
+            traces.append(thisLine)
 
 
     if len(finalClustersBelow) > 0:
-
-        thisLine = Scatter(name='Support Cluster', x=[startX, endX], y=[np.mean(finalClustersBelow), np.mean(finalClustersBelow)],
-                           mode='lines',
-                           opacity=0.7,
-                           line=dict(color=clusterColor,
-                                     width=clusterWidth,  # newClusterDict[eachMain]*2,
-                                     dash=clusterDash,
-                                     ),
-                           # marker=dict(symbol='circle'),
-                           hoverinfo='y',  # 'none'
-                           # legendgroup=name,
-                           showlegend=True,
-                           # textposition='middle right',
-                           # textfont=dict(color=color, family='Gravitas One'),
-                           # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
-                           )
-        traces.append(thisLine)
+        for eachCluster in finalClustersBelow:
+            thisLine = Scatter(name='Support Cluster', x=[startX, endX], y=[eachCluster, eachCluster],
+                               mode='lines',
+                               opacity=0.7,
+                               line=dict(color=clusterColor,
+                                         width=clusterWidth,  # newClusterDict[eachMain]*2,
+                                         dash=clusterDash,
+                                         ),
+                               # marker=dict(symbol='circle'),
+                               hoverinfo='y',  # 'none'
+                               # legendgroup=name,
+                               showlegend=True,
+                               # textposition='middle right',
+                               # textfont=dict(color=color, family='Gravitas One'),
+                               # text=['', '  %.1f' % (retracementPercentages[idx] * 100) + '%']
+                               )
+            traces.append(thisLine)
 
     if finalAboveLevel > 0:
 
-        thisLine = Scatter(name='Resistance Rtcmt', x=[startX, endX], y=[np.mean(finalAboveLevel), np.mean(finalAboveLevel)],
+        thisLine = Scatter(name='Resistance Rtcmt', x=[startX, endX], y=[finalAboveLevel, finalAboveLevel],
                            mode='lines',
                            opacity=0.7,
                            line=dict(color=levelColor,
@@ -392,7 +394,7 @@ def clusterAlgo2(levelList, close, startX, endX):
 
     if finalBelowLevel > 0:
 
-        thisLine = Scatter(name='Support Rtcmt', x=[startX, endX], y=[np.mean(finalBelowLevel), np.mean(finalBelowLevel)],
+        thisLine = Scatter(name='Support Rtcmt', x=[startX, endX], y=[finalBelowLevel, finalBelowLevel],
                            mode='lines',
                            opacity=0.7,
                            line=dict(color=levelColor,
@@ -494,9 +496,6 @@ def clusterAlgo(levelList, minClusters=0,):
         avg = (eachKey + sum(this)) / (len(this) + 1)
 
         newClusterDict[avg] = len(this) + 1
-
-    print(newClusterDict)
-    exit()
 
     return newClusterDict
 
@@ -661,7 +660,7 @@ def plotTimeRets(firstDate,lastDate,maxHeight,minHeight):
 
     return traces
 
-    exit()
+
 
 def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, ratio=1,scale=1,name = '1x1',color='navy'):
 
@@ -1443,18 +1442,20 @@ def plotTopBotHist(stuff):
 
     # print(fig)
 
-    return plotly.offline.plot(figure_or_data=fig,
-                               show_link=False,
-                               output_type='div',
-                               include_plotlyjs=False,
-                               # filename='minorHLData.html',
-                               auto_open=False,
-                               config={'displaylogo': False,
-                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
-                                                                  'zoomOut2d',
-                                                                  'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
-                                       'displayModeBar': False
-                                       }),
+    return fig
+
+    # return plotly.offline.plot(figure_or_data=fig,
+    #                            show_link=False,
+    #                            output_type='div',
+    #                            include_plotlyjs=False,
+    #                            # filename='minorHLData.html',
+    #                            auto_open=False,
+    #                            config={'displaylogo': False,
+    #                                    'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+    #                                                               'zoomOut2d',
+    #                                                               'resetScale2d', 'hoverCompareCartesian', 'lasso2d'],
+    #                                    'displayModeBar': False
+    #                                    }),
 
 
 def groupByMonths(df):

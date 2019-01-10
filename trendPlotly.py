@@ -15,15 +15,29 @@ def main():
     df.columns = ['date', 'close', 'open', 'high', 'low']
     df['date'] = pd.to_datetime(df['date'])
 
+    #only retain data for last 5 years
+    # df = df[df.date > (df.iloc[-1].date-timedelta(days=(365.25*2)))]
+    # df = df.reset_index(drop=True)
+
+
+
     cutoff = len(df) - 0
 
     dfTail = df[cutoff:]
     df = df[:cutoff]
 
+    backgroundColor = 'black'
+
     # endpoint = df.iloc[-1].date + timedelta(days=(
     #     (df.iloc[-1].date - df.iloc[0].date).days)*0.30)
 
-    endpoint = df.iloc[-1].date + timedelta(days=50)
+    endpoint = df.iloc[-1].date + timedelta(weeks=24)
+    
+    xaxisRange = [
+        df.iloc[0].date,
+        # df.iloc[-1].date,
+        endpoint
+    ]
 
     # endpoint = dfTail.iloc[-1].date + timedelta(days=((df.iloc[-1].date - df.iloc[0].date).days) * 0.10)
 
@@ -44,12 +58,14 @@ def main():
     activeHigh = []
     activeLow = []
     activeLowFirst = []
+    activeBarIndex = []
 
     insideDate = []
     insideClose = []
     insideOpen = []
     insideHigh = []
     insideLow = []
+    insideBarIndex = []
 
     for i, row in df.iterrows():
 
@@ -60,6 +76,7 @@ def main():
             activeHigh.append(row.high)
             activeLow.append(row.low)
             activeLowFirst.append(row.lowFirst)
+            activeBarIndex.append(i)
             continue
 
         if (activeHigh[-1] > row.high) & (activeLow[-1] < row.low):
@@ -68,6 +85,7 @@ def main():
             insideOpen.append(row.open)
             insideHigh.append(row.high)
             insideLow.append(row.low)
+            insideBarIndex.append(i)
             continue
 
         activeDate.append(row.date)
@@ -76,6 +94,7 @@ def main():
         activeHigh.append(row.high)
         activeLow.append(row.low)
         activeLowFirst.append(row.lowFirst)
+        activeBarIndex.append(i)
 
     # dfIgnoreInsideBars = pd.DataFrame(columns=['date', 'close', 'open', 'high', 'low'])
 
@@ -86,6 +105,7 @@ def main():
         'high': activeHigh,
         'low': activeLow,
         'lowFirst': activeLowFirst,
+        'barIndex': activeBarIndex,
     }
     insideBarsOnly = {
         'date': insideDate,
@@ -93,6 +113,7 @@ def main():
         'open': insideOpen,
         'high': insideHigh,
         'low': insideLow,
+        'barIndex': insideBarIndex,
     }
     dfIgnoreInsideBars = pd.DataFrame.from_dict(noInsideBars)
     dfInsideBarsOnly = pd.DataFrame.from_dict(insideBarsOnly)
@@ -227,10 +248,43 @@ def main():
     # intermediateHL_html = trendProjector(intermediateTopsBottoms)
     # topProjHtml,botProjHtml,HHHtml,LHHtml,LLHtml,HLHtml = trendProjector(majorTopsBottoms, df.iloc[-1].date)
 
-    HprojInt, LprojInt, HprojFigInt, LprojFigInt, latestDateInt = trendProjector(intermediateTopsBottoms,
-                                                                                 df.iloc[-1].date, highColor='crimson',
-                                                                                 lowColor='pink')
-    Hproj, Lproj, HprojFig, LprojFig, latestDateMaj = trendProjector(majorTopsBottoms, df.iloc[-1].date)
+    # HprojInt, LprojInt, HprojFigInt, LprojFigInt, latestDateInt = trendProjector(intermediateTopsBottoms,
+    #                                                                              df.iloc[-1].date, highColor='crimson',
+    #                                                                              lowColor='pink')
+    Hproj, Lproj, HprojFig, LprojFig, latestDateMaj = trendProjector(majorTopsBottoms, df.iloc[0].date)
+
+    HprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False)
+    LprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False)
+
+    HprojFig = plotly.offline.plot(HprojFig,
+                                             show_link=False,
+                                             output_type='div',
+                                             include_plotlyjs=False,
+                                             # filename='minorHLData.html',
+                                             auto_open=False,
+                                             config={'displaylogo': False,
+                                                     'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+                                                                                'zoomIn2d',
+                                                                                'zoomOut2d',
+                                                                                'resetScale2d', 'hoverCompareCartesian',
+                                                                                'lasso2d'],
+                                                     'displayModeBar': True
+                                                     }),
+    LprojFig = plotly.offline.plot(LprojFig,
+                                             show_link=False,
+                                             output_type='div',
+                                             include_plotlyjs=False,
+                                             # filename='minorHLData.html',
+                                             auto_open=False,
+                                             config={'displaylogo': False,
+                                                     'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+                                                                                'zoomIn2d',
+                                                                                'zoomOut2d',
+                                                                                'resetScale2d', 'hoverCompareCartesian',
+                                                                                'lasso2d'],
+                                                     'displayModeBar': True
+                                                     }),
+
     # endregion
 
     # region: Hurst Cycles
@@ -334,14 +388,16 @@ def main():
     #             break
     #     hurstNomProj.append(thisCycleSet)
 
-    hurstTraces = []
+    hurstTracesShort = []
+    hurstTracesLong = []
+    shortLongCutoff = 50 # weeks
 
     lowestBottom0809Date = pd.Timestamp(lowestBottom0809Date.values[0])
 
     if len(dfTail > 0):
-        hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=dfTail.iloc[-1].date)
+        hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=endpoint)
     else:
-        hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=df.iloc[-1].date)
+        hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=endpoint)
     composite = np.zeros(len(hurstX))
 
     for idx in range(len(hurstNominalList_weeks)):
@@ -356,11 +412,16 @@ def main():
                                 mode='lines', x=hurstDf.date, y=hurstDf.point,
                                 hoverinfo='x+name')
 
-        hurstTraces += [hurstSinePlot]
+        if hurstNominalList_weeks[idx] < shortLongCutoff:
+            hurstTracesShort += [hurstSinePlot]
+        else:
+            hurstTracesLong += [hurstSinePlot]
+
+
 
     ####### do the non-nominal averages #######
     if len(avgList) > 0:
-        hurstX, hurstXInt = hurstSines(lowestPoint=hurstStartDate, df=df, projLimitDate=dfTail.iloc[-1].date)
+        hurstX, hurstXInt = hurstSines(lowestPoint=hurstStartDate, df=df, projLimitDate=endpoint)
 
         for idx in range(len(avgList)):
             sine = -1 * np.cos(2 * np.pi * hurstXInt / (avgList[idx] * 7)) * (nonNomAmps[idx])
@@ -374,31 +435,32 @@ def main():
                                     mode='lines', x=hurstDf.date, y=hurstDf.point,
                                     hoverinfo='x+name')
 
-            hurstTraces += [hurstSinePlot]
+            if avgList[idx] < shortLongCutoff:
+                hurstTracesShort += [hurstSinePlot]
+            else:
+                hurstTracesLong += [hurstSinePlot]
 
     # composite plot
     hurstDf = pd.DataFrame(data=composite, columns=['point'])
     hurstDf['date'] = pd.to_datetime(hurstX)
     hurstCompositePlot = Scatter(name='Composite', mode='lines', x=hurstDf.date, y=hurstDf.point,
                                  line=dict(dash='dash'),
-                                 yaxis='y2',
+                                 # yaxis='y2',
                                  hoverinfo='x+name',
                                  )
 
-    hurstTraces += [hurstCompositePlot]
+    # hurstTraces += [hurstCompositePlot]
 
     # if len(dfTail)> 0: endpoint = dfTail.iloc[-1].date
     # else:
-    endpoint = df.iloc[-1].date + timedelta(weeks=12)
-    xaxisRange = [
-        # df.iloc[0].date,
-        df.iloc[-1].date,
-        endpoint
-    ]
+    # endpoint = df.iloc[-1].date + timedelta(weeks=12)
 
-    hurstFig = Figure(data=hurstTraces, layout=Layout(xaxis=dict(range=xaxisRange), showlegend=True))
 
-    hurstHtml = plotly.offline.plot(hurstFig,
+    hurstCompositeFig = Figure(data=[hurstCompositePlot], layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Hurst Composite'))
+    hurstShortFig = Figure(data=hurstTracesShort, layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Hurst Short Cycles'))
+    hurstLongFig = Figure(data=hurstTracesLong, layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Hurst Long Cycles'))
+
+    hurstCompositeHtml = plotly.offline.plot(hurstCompositeFig,
                                     show_link=False,
                                     output_type='div',
                                     include_plotlyjs=False,
@@ -411,6 +473,36 @@ def main():
                                                                        'lasso2d'],
                                             'displayModeBar': True
                                             }),
+
+    hurstShortHtml = plotly.offline.plot(hurstShortFig,
+                                             show_link=False,
+                                             output_type='div',
+                                             include_plotlyjs=False,
+                                             # filename='minorHLData.html',
+                                             auto_open=False,
+                                             config={'displaylogo': False,
+                                                     'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+                                                                                'zoomIn2d',
+                                                                                'zoomOut2d',
+                                                                                'resetScale2d', 'hoverCompareCartesian',
+                                                                                'lasso2d'],
+                                                     'displayModeBar': True
+                                                     }),
+
+    hurstLongHtml = plotly.offline.plot(hurstLongFig,
+                                             show_link=False,
+                                             output_type='div',
+                                             include_plotlyjs=False,
+                                             # filename='minorHLData.html',
+                                             auto_open=False,
+                                             config={'displaylogo': False,
+                                                     'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+                                                                                'zoomIn2d',
+                                                                                'zoomOut2d',
+                                                                                'resetScale2d', 'hoverCompareCartesian',
+                                                                                'lasso2d'],
+                                                     'displayModeBar': True
+                                                     }),
 
     # endregion
 
@@ -508,6 +600,54 @@ def main():
     intSignalBots = signalBots(df, bigBots=bigBotListInt)
     # endregion
 
+    #region Sun and Moon
+    
+    sun = fixedIntervalBar(startDate=lowestBottom0809Date,endDate=endpoint,intervalDays=30,showStartDate=lowestBottom0809Date)
+    # sunFig = Figure(data=[sun],
+    #                 layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Sun',bargap=0.9),
+    #                 )
+    # sunHtml = plotly.offline.plot(sunFig,
+    #                                          show_link=False,
+    #                                          output_type='div',
+    #                                          include_plotlyjs=False,
+    #                                          # filename='minorHLData.html',
+    #                                          auto_open=False,
+    #                                          config={'displaylogo': False,
+    #                                                  'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+    #                                                                             'zoomIn2d',
+    #                                                                             'zoomOut2d',
+    #                                                                             'resetScale2d', 'hoverCompareCartesian',
+    #                                                                             'lasso2d'],
+    #                                                  'displayModeBar': True
+    #                                                  }),
+
+    print('lowest point date:', lowestBottom0809Date)
+
+    moon = fixedIntervalBar(startDate=lowestBottom0809Date, endDate=endpoint, intervalDays=7,
+                           showStartDate=lowestBottom0809Date)
+    moonFig = Figure(data=[sun, moon],
+                     layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Sun + Moon Low Projections',
+                                   bargap=0.5,
+                                   barmode='stack',
+                                   ),
+                     )
+    moonHtml = plotly.offline.plot(moonFig,
+                                  show_link=False,
+                                  output_type='div',
+                                  include_plotlyjs=False,
+                                  # filename='minorHLData.html',
+                                  auto_open=False,
+                                  config={'displaylogo': False,
+                                          'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+                                                                     'zoomIn2d',
+                                                                     'zoomOut2d',
+                                                                     'resetScale2d', 'hoverCompareCartesian',
+                                                                     'lasso2d'],
+                                          'displayModeBar': True
+                                          }),
+
+    #endregion
+
     # region: active bars and inside bars and outside bars
     insideBars = Ohlc(name='Inside Bars', x=dfInsideBarsOnly.date, open=dfInsideBarsOnly.open,
                       close=dfInsideBarsOnly.close,
@@ -566,8 +706,8 @@ def main():
                    # showlegend=False,
                    # increasing=dict(line=dict(color= '#17BECF')),
                    # decreasing=dict(line=dict(color= '#17BECF')),
-                   increasing=dict(line=dict(color='black')),
-                   decreasing=dict(line=dict(color='black')),
+                   # increasing=dict(line=dict(color='black')),
+                   # decreasing=dict(line=dict(color='black')),
                    )
     # endregion
 
@@ -588,35 +728,35 @@ def main():
 
     # region:trendlines
     # plot minor trendline points and lines
-    minor, minorTops, minorBottoms = plotTrendlines(trendLine1, minorStuff, name='Minor', color='grey', width=4)
+    # minor, minorTops, minorBottoms = plotTrendlines(trendLine1, minorStuff, name='Minor', color='grey', width=4)
 
     # plot intermediate trendline points and lines
-    intermediate, intermediateTops, intermediateBottoms = plotTrendlines(trendLine2, intermediateStuff,
-                                                                         name='Intermediate', color='#000080', width=4)
+    # intermediate, intermediateTops, intermediateBottoms = plotTrendlines(trendLine2, intermediateStuff,
+    #                                                                      name='Intermediate', color='#000080', width=4)
 
     # plot major trendline points and lines
     major, majorTops, majorBottoms = plotTrendlines(trendLine3, majorStuff, name='Major', color='navy', width=3)
     # endregion
 
     # region:minorData to plot
-    minorData = [insideBars, activeBars,
-                 # OHF, OLF,
-                 minor, minorTops, minorBottoms,
-                 minorUps, minorDowns
-                 ]
+    # minorData = [insideBars, activeBars,
+    #              # OHF, OLF,
+    #              minor, minorTops, minorBottoms,
+    #              minorUps, minorDowns
+    #              ]
     # endregion
 
     # region: intermediate data to plot
-    intermediateData = [
-        # insideBars,
-        activeBars,
-        # OHF, OLF,
-        intermediate, intermediateTops, intermediateBottoms,
-        intermediateUps, intermediateDowns
-    ]
+    # intermediateData = [
+    #     # insideBars,
+    #     activeBars,
+    #     # OHF, OLF,
+    #     intermediate, intermediateTops, intermediateBottoms,
+    #     intermediateUps, intermediateDowns
+    # ]
     # intGann +
     # intermediateData += intRetLines
-    intermediateData += intTimeRets
+    # intermediateData += intTimeRets
     # intSignalTops + intSignalBots
     # + [bigTops,bigBots]
     # endregion
@@ -630,7 +770,7 @@ def main():
         # OHF, OLF,
         # intermediate,
         allBars, tailBars,
-        major,
+        # major,
         # majorTops, majorBottoms,
 
         # majorUps, majorDowns,
@@ -665,7 +805,7 @@ def main():
     #         ),
     #         showgrid=True,
     #     ),
-    #     showlegend=True,
+    #     showlegend=False,
     #     # annotations=minorAnnot
     # )
     #
@@ -677,7 +817,7 @@ def main():
     #         ),
     #         showgrid=True,
     #     ),
-    #     showlegend=True,
+    #     showlegend=False,
     #     yaxis=dict(range=[-0.1, max(df.high) * 1.2])
     #     # annotations=minorAnnot
     # )
@@ -687,11 +827,16 @@ def main():
         xaxis=dict(
             rangeslider=dict(
                 visible=False
+
             ),
+            range=xaxisRange,
             showgrid=True,
+
         ),
         showlegend=True,
         yaxis=dict(range=[min(df.low) * 0.8, max(df.high) * 1.2]),
+        # paper_bgcolor=backgroundColor,
+        # plot_bgcolor=backgroundColor,
         # barmode='stack',
         # yaxis2=dict(overlaying='y', side='right', range=[min(composite) * 0.8, max(composite) * 1.2]),
         # annotations=majRetAnnot
@@ -702,12 +847,38 @@ def main():
     # intermediateFig = Figure(data=intermediateData, layout=layoutInt)
     majorFig = Figure(data=majorData, layout=layoutMaj)
 
+    majorTrendFig = Figure(data=[major, majorTops, majorBottoms], layout = layoutMaj)
+    majorTrendHtml = plotly.offline.plot(majorTrendFig,
+                        show_link=False,
+                        output_type='div',
+                        include_plotlyjs=False,
+                        # filename='minorHLData.html',
+                        auto_open=False,
+                        config={'displaylogo': False,
+                                'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d', 'zoomIn2d',
+                                                           'zoomOut2d',
+                                                           'resetScale2d', 'hoverCompareCartesian',
+                                                           'lasso2d'],
+                                'displayModeBar': True
+                                }),
+
     # plotly.offline.plot(fig,image='png',image_filename='3trends',image_width=7200,image_height=1200)
 
     # plotter(minorFig,'minorTrend_daily.html', [minorHL_html])
     # plotter(intermediateFig, 'intermediateTrend_daily.html', [intermediateHL_html])
 
-    plotter(majorFig, 'majorTrend_weeklyFrom2008.html', hurstHtml)
+
+    # htmls = [majorTrendHtml] + hurstHtml
+
+    plotter(majorFig, 'majorTrend_weeklyFrom2008.html',
+            HprojFig+
+            LprojFig+
+            majorTrendHtml+
+            hurstCompositeHtml+
+            hurstShortHtml+
+            hurstLongHtml+
+            # sunHtml+
+            moonHtml)
     #         # [topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml],
     #         )
 
@@ -725,7 +896,7 @@ def main():
     print("Operation took a total of %.2f seconds." % (elapsed))
 
 
-    return majorFig, hurstFig
+    return majorFig
 
 if __name__ == '__main__':
 

@@ -79,6 +79,64 @@ import time
 # TITLE = 'TrendLine Delay = ' + str(DELAY)
 TITLE = 'minor-grey, intermediate-blue, major-black'
 
+def fixedIntervalBar(startDate = None,
+                     endDate= None,
+                     intervalDays = 1,
+                     showStartDate = None):
+
+    dates = []
+
+    maxNumOfDaysIn5Years = 365*365
+    currentDate = startDate
+    y = []
+    counter = intervalDays
+    # dates.append(currentDate)
+    for i in range(maxNumOfDaysIn5Years):
+        if currentDate > endDate: break
+        if currentDate >= showStartDate:
+            dates.append(currentDate)
+            y.append(1)
+            # if counter==intervalDays:
+            #     y.append(1)
+            # else:
+            #     y.append(0)
+
+        currentDate += timedelta(days=intervalDays)
+        # currentDate += timedelta(days=1)
+        # if counter==intervalDays:
+        #     counter=0
+        # else:
+        #     counter+=1
+
+    # length=len(dates)
+
+    thisBar = Bar( x = dates, y = y,
+                  # width=[10]*length, #[barWidth] * length,
+                  # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
+                  # hoverinfo='none',
+                  # name='HH Projection ' + eachProj.strftime("%y-%m-%d"),
+                  # dx=1,
+                    dy=1,
+                  # yaxis='y2',
+                  # legendgroup='Proj of next highs',
+                  showlegend=True,
+                  opacity=1,
+                  # marker=dict(color=highColor),
+                  hoverinfo='x',
+                   # hoverlabel='',
+                   marker=dict(color='navy'),
+                  )
+
+
+    # print(showStartDate,endDate,intervalDays)
+    # print(dates)
+    # print(thisBar)
+    # exit()
+
+
+    return thisBar
+
+
 def hurstSines(lowestPoint,df, projLimitDate=None):
     lengthDf = len(df)
     hurstX=[]
@@ -243,18 +301,18 @@ def clusterAlgo2(levelList, close, startX, endX):
     finalClustersBelow = []
     finalAboveLevel = -1
     finalBelowLevel = -1
-    
-    
+
+
     if minSpace==maxSpace:
         # if no clusters found
         aboveMin = np.inf
         belowMin = np.inf
-        
+
         for eachRange in levelList:
             for val in eachRange:
                 aboveDist = val - close
                 belowDist = close - val
-                
+
                 if (aboveDist>0) and (aboveDist<aboveMin):
                     finalAboveLevel = val
                     aboveMin = aboveDist
@@ -266,7 +324,7 @@ def clusterAlgo2(levelList, close, startX, endX):
 
     else:#if clusters exist
         clusterCutoff = spaceFactor * minSpace
-    
+
         for i in range(length):
             for j in range(1, length):
                 nextIdx = i + j
@@ -274,10 +332,10 @@ def clusterAlgo2(levelList, close, startX, endX):
                 for mainVal in levelList[i]:
                     for subVal in levelList[nextIdx]:
                         dist = abs(mainVal - subVal)
-    
+
                         if dist <= clusterCutoff:
                             clusters.append([mainVal, subVal])
-                            
+
         # find clusters above close and below close
         clustersAbove = {}
         clustersAboveDist = []
@@ -294,8 +352,8 @@ def clusterAlgo2(levelList, close, startX, endX):
             elif (avgDist < close):
                 clustersBelowDist.append(avgDist)
                 clustersBelow[avgDist] = each
-                        
-                
+
+
         if len(clustersAboveDist) > 0:
             # finalClustersAbove =clustersAbove[min(clustersAboveDist)]
             finalClustersAbove = clustersAboveDist
@@ -304,7 +362,7 @@ def clusterAlgo2(levelList, close, startX, endX):
             for eachRange in levelList:
                 for val in eachRange:
                     aboveDist = val - close
-    
+
                     if (aboveDist > 0) and (aboveDist < aboveMin):
                         finalAboveLevel = val
                         aboveMin = aboveDist
@@ -923,7 +981,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
-                      # width=[barWidth] * length,
+                      # width=[1]*length, #[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
                       # hoverinfo='none',
                       name='HH Projection from '+eachProj.strftime("%y-%m-%d"),
@@ -931,7 +989,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       yaxis='y2',
                       legendgroup='Proj of next highs',
                       showlegend=False,
-                      opacity=0.4,
+                      opacity=1,
                       marker=dict(color=highColor),
                       hoverinfo='x',
                       )
@@ -951,7 +1009,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
-                      # width=[barWidth] * length,
+                      # width=[1]*length, #[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
                       # hoverinfo='none',
                       name='LH Projection from '+eachProj.strftime("%y-%m-%d"),
@@ -959,7 +1017,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       yaxis='y2',
                       legendgroup='Proj of next highs',
                       showlegend=False,
-                      opacity=0.4,
+                      opacity=1,
                       marker=dict(color=highColor),
                       hoverinfo='x',
                       )
@@ -996,7 +1054,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
-                      # width=[barWidth] * length,
+                      # width=[1]*length, #[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
                       # hoverinfo='none',
                       name='LL Projection from '+eachProj.strftime("%y-%m-%d"),
@@ -1004,7 +1062,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       yaxis='y2',
                       legendgroup='Proj of next lows',
                       showlegend=False,
-                      opacity=0.4,
+                      opacity=1,
                       marker=dict(color=lowColor),
                       hoverinfo='x',
                       )
@@ -1024,7 +1082,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
         length = len(eachDates)
 
         thisBar = Bar(x=eachDates, y=[1]*length,
-                      # width=[barWidth]*length,
+                      # width=[1]*length, #[barWidth] * length,
                       # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),
                       # hoverinfo='none',
                       name='HL Projection from '+eachProj.strftime("%y-%m-%d"),
@@ -1032,7 +1090,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       yaxis='y2',
                       legendgroup='Proj of next lows',
                       showlegend=False,
-                      opacity=0.4,
+                      opacity=1,
                       marker=dict(color=lowColor),
                       hoverinfo='x',
                       )
@@ -1209,7 +1267,7 @@ def trendFinder(stuff,barHeight=0.03,upColor = 'green',downColor='red'):
 
     upTrendList=[]
 
-    topsAndBottoms.reset_index(drop=True,inplace=True)
+    topsAndBottoms = topsAndBottoms.reset_index(drop=True,inplace=False)
     for index,row in topsAndBottoms.iterrows():
         if index < 2:
             upTrendList.append(False)
@@ -1510,7 +1568,10 @@ def plotter(figure, filename, htmlList):
         htmlFile.seek(0, 0)
         htmlFile.write(line.rstrip('\r\n') + '\n' + contents)
 
+
         for eachHtml in htmlList:
+
+
             htmlFile.write('\n' + eachHtml)
 
 
@@ -1525,28 +1586,63 @@ def plotTrendlines(trendLine, stuff, name, color, width, dash=None):
                    showlegend=True,
                    )
 
-    tops = Scatter(name=name + ' Tops', x=stuff['tops'].date, y=stuff['tops'].point,
-                   mode='markers+text',
+    topsAndBots = stuff['topsAndBottoms']
+    topsAndBots['barsSincePrev'] = topsAndBots.barIndex - topsAndBots.shift(1).barIndex
+    # pd.to_numeric(topsAndBots.barsSincePrev,downcast='integer',errors='coerce')
+    topsAndBots['barsSincePrev'].fillna(value='',inplace=True)
+    # topsAndBots['barsSincePrev'] = topsAndBots['barsSincePrev'].astype(str)
+
+
+    toppers = topsAndBots[topsAndBots.top==True]
+    botters = topsAndBots[topsAndBots.bottom==True]
+    
+    topLabels=[]
+    for i,r in toppers.iterrows():
+        if r.barsSincePrev=='':
+            topLabels.append('')
+            continue
+        topLabels.append('%i'%(r.barsSincePrev))
+
+    botLabels = []
+    for i, r in botters.iterrows():
+        if r.barsSincePrev == '':
+            botLabels.append('')
+            continue
+        botLabels.append('%i' % (r.barsSincePrev))
+
+    # print(toppers)
+    # print(botters)
+    # print(topsAndBots)
+    # exit()
+
+    # toppers['barsSincePrev'] = toppers['barsSincePrev'].astype(int)
+
+    # print(toppers)
+    # print(botters)
+    # # exit()
+
+    tops = Scatter(name=name + ' Tops', x=toppers.date, y=toppers.point,
+                   mode='text+markers',
                    line=dict(color=color,
                              width=width,
-                             dash=dash
+                             dash=dash,
                              ),
-                   marker=dict(symbol='circle'),
+                   marker=dict(symbol='circle',opacity=0),
                    hoverinfo='none',
-                   text=stuff['topText'],
+                   text=topLabels,
                    textposition='top center',
-                   textfont=dict(color='green')
+                   textfont=dict(color='green',)
                    )
 
-    bottoms = Scatter(name=name + ' Bottoms', x=stuff['bottoms'].date, y=stuff['bottoms'].point,
-                      mode='markers+text',
+    bottoms = Scatter(name=name + ' Bottoms', x=botters.date, y=botters.point,
+                      mode='text+markers',
                       line=dict(color=color,
                                 width=width,
                                 dash=dash
                                 ),
-                      marker=dict(symbol='circle'),
+                      marker=dict(symbol='circle',opacity=0),
                       hoverinfo='none',
-                      text=stuff['bottomText'],
+                      text=botLabels,
                       textposition='bottom center',
                       textfont=dict(color='red')
                       )
@@ -1665,6 +1761,7 @@ def getTrendTopsAndBottoms(trendLine, df):
     # print(topText)
     # exit()
 
+
     return dict(tops=trendLine[tops],
                 bottoms=trendLine[bottoms],
                 topsAndBottoms=trendLine[tops | bottoms],
@@ -1706,9 +1803,9 @@ def checkPrevPoints(dfIgnoreInsideBars, index, row, DELAY):
     # add points if necessary
 
     if trendLow:
-        return [row.date, row.low]
+        return [row.date, row.low, row.barIndex]
     elif trendHigh:
-        return [row.date, row.high]
+        return [row.date, row.high, row.barIndex]
 
         # otherwise do nothing
 
@@ -1720,31 +1817,31 @@ def processOutsideBars(row, trendPoints, DELAY, minorPoints):
         if minorPoints[-1][1] >= minorPoints[-2][1]:  # trending up
             if not row.lowFirst:  # high first
                 if DELAY == 1:  # high then low
-                    trendPoints.append([row.date, row.high])
-                    trendPoints.append([row.date, row.low])
+                    trendPoints.append([row.date, row.high, row.barIndex])
+                    trendPoints.append([row.date, row.low, row.barIndex])
                 else:  # 1 bar up
-                    trendPoints.append([row.date, row.high])
+                    trendPoints.append([row.date, row.high, row.barIndex])
             else:  # low first
                 if DELAY == 1:  # low then high
-                    trendPoints.append([row.date, row.low])
-                    trendPoints.append([row.date, row.high])
+                    trendPoints.append([row.date, row.low, row.barIndex])
+                    trendPoints.append([row.date, row.high, row.barIndex])
                 else:  # 1 bar up
-                    trendPoints.append([row.date, row.high])
+                    trendPoints.append([row.date, row.high, row.barIndex])
 
         elif minorPoints[-1][1] < minorPoints[-2][1]:  # trending down
 
             if not row.lowFirst:  # high first
                 if DELAY == 1:  # high then low
-                    trendPoints.append([row.date, row.high])
-                    trendPoints.append([row.date, row.low])
+                    trendPoints.append([row.date, row.high, row.barIndex])
+                    trendPoints.append([row.date, row.low, row.barIndex])
                 else:  # 1 bar up
-                    trendPoints.append([row.date, row.high])
+                    trendPoints.append([row.date, row.high, row.barIndex])
             else:  # low first
                 if DELAY == 1:  # low then high
-                    trendPoints.append([row.date, row.low])
-                    trendPoints.append([row.date, row.high])
+                    trendPoints.append([row.date, row.low, row.barIndex])
+                    trendPoints.append([row.date, row.high, row.barIndex])
                 else:  # 1 bar down
-                    trendPoints.append([row.date, row.low])
+                    trendPoints.append([row.date, row.low, row.barIndex])
     return trendPoints
 
 
@@ -1782,9 +1879,10 @@ def getTrendLine(dfIgnoreInsideBars):
             result = checkPrevPoints(dfIgnoreInsideBars, index, row, DELAY=3)
             if result != None: majorPoints.append(result)
 
-    trendLine1 = pd.DataFrame(minorPoints, columns=['date', 'point'])
-    trendLine2 = pd.DataFrame(intermediatePoints, columns=['date', 'point'])
-    trendLine3 = pd.DataFrame(majorPoints, columns=['date', 'point'])
+    trendLine1 = pd.DataFrame(minorPoints, columns=['date', 'point', 'barIndex'])
+    trendLine2 = pd.DataFrame(intermediatePoints, columns=['date', 'point','barIndex'])
+    trendLine3 = pd.DataFrame(majorPoints, columns=['date', 'point','barIndex'])
+
 
     return trendLine1, trendLine2, trendLine3
 

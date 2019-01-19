@@ -110,6 +110,22 @@ def fixedIntervalBar(startDate = None,
 
     # length=len(dates)
 
+    #project backwards if required
+
+    backDates = []
+    currentDate = startDate
+    backY = []
+    for i in range(maxNumOfDaysIn5Years):
+        currentDate -= timedelta(days=intervalDays)
+        if currentDate < showStartDate: break
+        backDates.append(currentDate)
+        backY.append(1)
+
+
+    dates = backDates + dates
+    y = backY + y
+
+
     thisBar = Bar( x = dates, y = y,
                   # width=[10]*length, #[barWidth] * length,
                   # xbins=dict(start=np.min(HH_bars), size=size, end=np.max(HH_bars)),

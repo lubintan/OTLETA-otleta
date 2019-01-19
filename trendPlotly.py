@@ -601,8 +601,10 @@ def main():
     # endregion
 
     #region Sun and Moon
-    
-    sun = fixedIntervalBar(startDate=lowestBottom0809Date,endDate=endpoint,intervalDays=30,showStartDate=lowestBottom0809Date)
+
+    showStart = datetime(year=2004,month=7,day=7)
+
+    sun = fixedIntervalBar(startDate=lowestBottom0809Date,endDate=endpoint,intervalDays=30,showStartDate=showStart)
     # sunFig = Figure(data=[sun],
     #                 layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Sun',bargap=0.9),
     #                 )
@@ -624,9 +626,14 @@ def main():
     print('lowest point date:', lowestBottom0809Date)
 
     moon = fixedIntervalBar(startDate=lowestBottom0809Date, endDate=endpoint, intervalDays=7,
-                           showStartDate=lowestBottom0809Date)
+                           showStartDate=showStart)
+
+    sunMoonXaxisRange = [
+        showStart,
+        endpoint
+    ]
     moonFig = Figure(data=[sun, moon],
-                     layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Sun + Moon Low Projections',
+                     layout=Layout(xaxis=dict(range=sunMoonXaxisRange), showlegend=False,title='Sun + Moon Low Projections',
                                    bargap=0.5,
                                    barmode='stack',
                                    ),

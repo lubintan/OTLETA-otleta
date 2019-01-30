@@ -243,6 +243,117 @@ def main():
                                minHeight=min([pointFirst, pointLast]) * 0.95, )
     # endregion
 
+
+    #region: get the 2 major top and bottom points
+    # find lowest point from 2008-09
+
+    lowestBottom0809 = majorTopsBottoms[
+        (majorTopsBottoms.bottom == True) & (majorTopsBottoms.date > datetime(2008, 1, 1))
+        # & (majorTopsBottoms.date < datetime(2009, 12, 31))
+     & (majorTopsBottoms.date<df.iloc[-1].date)
+    ]
+    lowestBottom0809Date = lowestBottom0809[lowestBottom0809.point == min(lowestBottom0809.point)].date
+
+    # find highest point from 2008-09
+
+    highestTop0809 = majorTopsBottoms[
+        (majorTopsBottoms.top == True) & (majorTopsBottoms.date > datetime(2008, 1, 1))
+        # & (majorTopsBottoms.date < datetime(2009, 12, 31))
+        & (majorTopsBottoms.date < df.iloc[-1].date)
+        ]
+    highestTop0809Date = highestTop0809[highestTop0809.point == max(highestTop0809.point)].date
+
+    lowestBottom0809Date = pd.Timestamp(lowestBottom0809Date.values[0])
+    highestTop0809Date = pd.Timestamp(highestTop0809Date.values[0])
+
+    print(lowestBottom0809Date,'\n', highestTop0809Date)
+    #endregion
+
+
+
+    #region Sun and Moon
+
+    showStart = xaxisRange[0]
+
+    sunHigh = fixedIntervalBar(startDate=highestTop0809Date, endDate=endpoint, intervalDays=30, showStartDate=showStart)
+    sunLow = fixedIntervalBar(startDate=lowestBottom0809Date,endDate=endpoint,intervalDays=30,showStartDate=showStart)
+    # sunFig = Figure(data=[sun],
+    #                 layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Sun',bargap=0.9),
+    #                 )
+    # sunHtml = plotly.offline.plot(sunFig,
+    #                                          show_link=False,
+    #                                          output_type='div',
+    #                                          include_plotlyjs=False,
+    #                                          # filename='minorHLData.html',
+    #                                          auto_open=False,
+    #                                          config={'displaylogo': False,
+    #                                                  'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+    #                                                                             'zoomIn2d',
+    #                                                                             'zoomOut2d',
+    #                                                                             'resetScale2d', 'hoverCompareCartesian',
+    #                                                                             'lasso2d'],
+    #                                                  'displayModeBar': True
+    #                                                  }),
+
+    # print('lowest point date:', lowestBottom0809Date)
+
+    moonHigh = fixedIntervalBar(startDate=highestTop0809Date, endDate=endpoint, intervalDays=7,
+                            showStartDate=showStart)
+    moonLow = fixedIntervalBar(startDate=lowestBottom0809Date, endDate=endpoint, intervalDays=7,
+                           showStartDate=showStart)
+
+    sunMoonXaxisRange = [
+        showStart,
+        endpoint
+    ]
+
+    # moonHighFig = Figure(data=[sunHigh, moonHigh],
+    #                  layout=Layout(xaxis=dict(range=sunMoonXaxisRange), showlegend=False,
+    #                                title='Sun + Moon High Projections',
+    #                                bargap=0.5,
+    #                                barmode='stack',
+    #                                ),
+    #                  )
+    # moonHighHtml = plotly.offline.plot(moonHighFig,
+    #                                show_link=False,
+    #                                output_type='div',
+    #                                include_plotlyjs=False,
+    #                                # filename='minorHLData.html',
+    #                                auto_open=False,
+    #                                config={'displaylogo': False,
+    #                                        'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+    #                                                                   'zoomIn2d',
+    #                                                                   'zoomOut2d',
+    #                                                                   'resetScale2d', 'hoverCompareCartesian',
+    #                                                                   'lasso2d'],
+    #                                        'displayModeBar': True
+    #                                        }),
+    #
+    # moonFig = Figure(data=[sunLow, moonLow],
+    #                  layout=Layout(xaxis=dict(range=sunMoonXaxisRange), showlegend=False,title='Sun + Moon Low Projections',
+    #                                bargap=0.5,
+    #                                barmode='stack',
+    #                                ),
+    #                  )
+    # moonHtml = plotly.offline.plot(moonFig,
+    #                               show_link=False,
+    #                               output_type='div',
+    #                               include_plotlyjs=False,
+    #                               # filename='minorHLData.html',
+    #                               auto_open=False,
+    #                               config={'displaylogo': False,
+    #                                       'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+    #                                                                  'zoomIn2d',
+    #                                                                  'zoomOut2d',
+    #                                                                  'resetScale2d', 'hoverCompareCartesian',
+    #                                                                  'lasso2d'],
+    #                                       'displayModeBar': True
+    #                                       }),
+    #
+    # #endregion
+
+
+
     # region: charts for projection data
     # minorHL_html = trendProjector(minorTopsBottoms)
     # intermediateHL_html = trendProjector(intermediateTopsBottoms)
@@ -253,8 +364,30 @@ def main():
     #                                                                              lowColor='pink')
     Hproj, Lproj, HprojFig, LprojFig, latestDateMaj = trendProjector(majorTopsBottoms, df.iloc[0].date)
 
-    HprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False)
-    LprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False)
+    # HprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False, barmode='stack', title='Projection of next Bottom')
+    # LprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False, barmode='stack', title='Projection of next Bottom')
+
+
+    # print(Hproj)
+    # exit()
+    # print(sunHigh,moonHigh)
+    # exit()
+
+    Hproj.append(sunHigh)
+    Hproj.append(moonHigh)
+
+    Lproj.append(sunLow)
+    Lproj.append(moonLow)
+
+
+    Hproj = Hproj + Lproj
+
+
+    HprojFig = Figure(data=Hproj, layout=Layout(barmode='stack', title='Projection of next event',xaxis=dict(range=xaxisRange), showlegend=False,))
+
+
+
+
 
     HprojFig = plotly.offline.plot(HprojFig,
                                              show_link=False,
@@ -270,20 +403,20 @@ def main():
                                                                                 'lasso2d'],
                                                      'displayModeBar': True
                                                      }),
-    LprojFig = plotly.offline.plot(LprojFig,
-                                             show_link=False,
-                                             output_type='div',
-                                             include_plotlyjs=False,
-                                             # filename='minorHLData.html',
-                                             auto_open=False,
-                                             config={'displaylogo': False,
-                                                     'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
-                                                                                'zoomIn2d',
-                                                                                'zoomOut2d',
-                                                                                'resetScale2d', 'hoverCompareCartesian',
-                                                                                'lasso2d'],
-                                                     'displayModeBar': True
-                                                     }),
+    # LprojFig = plotly.offline.plot(LprojFig,
+    #                                          show_link=False,
+    #                                          output_type='div',
+    #                                          include_plotlyjs=False,
+    #                                          # filename='minorHLData.html',
+    #                                          auto_open=False,
+    #                                          config={'displaylogo': False,
+    #                                                  'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
+    #                                                                             'zoomIn2d',
+    #                                                                             'zoomOut2d',
+    #                                                                             'resetScale2d', 'hoverCompareCartesian',
+    #                                                                             'lasso2d'],
+    #                                                  'displayModeBar': True
+    #                                                  }),
 
     # endregion
 
@@ -314,12 +447,9 @@ def main():
     # print(hurstProjs)
     # exit()
 
-    # find lowest point from 2008-09
 
-    lowestBottom0809 = majorTopsBottoms[
-        (majorTopsBottoms.bottom == True) & (majorTopsBottoms.date > datetime(2008, 1, 1))
-        & (majorTopsBottoms.date < datetime(2009, 12, 31))]
-    lowestBottom0809Date = lowestBottom0809[lowestBottom0809.point == min(lowestBottom0809.point)].date
+    # print(lowestBottom0809Date)
+    # exit()
 
     if len(avgList) == 0:
         hurstNominalList_weeks = [
@@ -392,7 +522,7 @@ def main():
     hurstTracesLong = []
     shortLongCutoff = 50 # weeks
 
-    lowestBottom0809Date = pd.Timestamp(lowestBottom0809Date.values[0])
+    
 
     if len(dfTail > 0):
         hurstX, hurstXInt = hurstSines(lowestPoint=lowestBottom0809Date, df=df, projLimitDate=endpoint)
@@ -599,61 +729,6 @@ def main():
     intSignalTops = signalTops(df, bigTops=bigTopListInt)
     intSignalBots = signalBots(df, bigBots=bigBotListInt)
     # endregion
-
-    #region Sun and Moon
-
-    showStart = datetime(year=2004,month=7,day=7)
-
-    sun = fixedIntervalBar(startDate=lowestBottom0809Date,endDate=endpoint,intervalDays=30,showStartDate=showStart)
-    # sunFig = Figure(data=[sun],
-    #                 layout=Layout(xaxis=dict(range=xaxisRange), showlegend=False,title='Sun',bargap=0.9),
-    #                 )
-    # sunHtml = plotly.offline.plot(sunFig,
-    #                                          show_link=False,
-    #                                          output_type='div',
-    #                                          include_plotlyjs=False,
-    #                                          # filename='minorHLData.html',
-    #                                          auto_open=False,
-    #                                          config={'displaylogo': False,
-    #                                                  'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
-    #                                                                             'zoomIn2d',
-    #                                                                             'zoomOut2d',
-    #                                                                             'resetScale2d', 'hoverCompareCartesian',
-    #                                                                             'lasso2d'],
-    #                                                  'displayModeBar': True
-    #                                                  }),
-
-    print('lowest point date:', lowestBottom0809Date)
-
-    moon = fixedIntervalBar(startDate=lowestBottom0809Date, endDate=endpoint, intervalDays=7,
-                           showStartDate=showStart)
-
-    sunMoonXaxisRange = [
-        showStart,
-        endpoint
-    ]
-    moonFig = Figure(data=[sun, moon],
-                     layout=Layout(xaxis=dict(range=sunMoonXaxisRange), showlegend=False,title='Sun + Moon Low Projections',
-                                   bargap=0.5,
-                                   barmode='stack',
-                                   ),
-                     )
-    moonHtml = plotly.offline.plot(moonFig,
-                                  show_link=False,
-                                  output_type='div',
-                                  include_plotlyjs=False,
-                                  # filename='minorHLData.html',
-                                  auto_open=False,
-                                  config={'displaylogo': False,
-                                          'modeBarButtonsToRemove': ['sendDataToCloud', 'select2d',
-                                                                     'zoomIn2d',
-                                                                     'zoomOut2d',
-                                                                     'resetScale2d', 'hoverCompareCartesian',
-                                                                     'lasso2d'],
-                                          'displayModeBar': True
-                                          }),
-
-    #endregion
 
     # region: active bars and inside bars and outside bars
     insideBars = Ohlc(name='Inside Bars', x=dfInsideBarsOnly.date, open=dfInsideBarsOnly.open,
@@ -879,13 +954,15 @@ def main():
 
     plotter(majorFig, 'majorTrend_weeklyFrom2008.html',
             HprojFig+
-            LprojFig+
+            # LprojFig+
             majorTrendHtml+
             hurstCompositeHtml+
             hurstShortHtml+
-            hurstLongHtml+
+            hurstLongHtml
             # sunHtml+
-            moonHtml)
+            # moonHighHtml+
+            # moonHtml
+            )
     #         # [topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml],
     #         )
 

@@ -82,7 +82,8 @@ TITLE = 'minor-grey, intermediate-blue, major-black'
 def fixedIntervalBar(startDate = None,
                      endDate= None,
                      intervalDays = 1,
-                     showStartDate = None):
+                     showStartDate = None,
+                     highColor='orange'):
 
     dates = []
 
@@ -137,10 +138,10 @@ def fixedIntervalBar(startDate = None,
                   # legendgroup='Proj of next highs',
                   showlegend=True,
                   opacity=1,
-                  # marker=dict(color=highColor),
+                  marker=dict(color=highColor),
                   hoverinfo='x',
                    # hoverlabel='',
-                   marker=dict(color='navy'),
+                   # marker=dict(color='navy'),
                   )
 
 
@@ -887,7 +888,7 @@ def check3Points(counter, topsAndBottoms, trendUp, topOrBottom):
     return diff.days, counter - 2
 
 
-def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 'violet'):
+def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 'orange'):
     # 1. have a 3d list of tops, bottoms and projections
     # 2. have 2 charts. 1 to project tops, another one to project bottoms.
 
@@ -1002,7 +1003,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       # hoverinfo='none',
                       name='HH Projection from '+eachProj.strftime("%y-%m-%d"),
                       dx=1,dy=1,
-                      yaxis='y2',
+                      # yaxis='y2',
                       legendgroup='Proj of next highs',
                       showlegend=False,
                       opacity=1,
@@ -1030,7 +1031,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       # hoverinfo='none',
                       name='LH Projection from '+eachProj.strftime("%y-%m-%d"),
                       dx=1,dy=1,
-                      yaxis='y2',
+                      # yaxis='y2',
                       legendgroup='Proj of next highs',
                       showlegend=False,
                       opacity=1,
@@ -1075,7 +1076,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       # hoverinfo='none',
                       name='LL Projection from '+eachProj.strftime("%y-%m-%d"),
                       dx=1,dy=1,
-                      yaxis='y2',
+                      # yaxis='y2',
                       legendgroup='Proj of next lows',
                       showlegend=False,
                       opacity=1,
@@ -1103,7 +1104,7 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                       # hoverinfo='none',
                       name='HL Projection from '+eachProj.strftime("%y-%m-%d"),
                       dx=1,dy=1,
-                      yaxis='y2',
+                      # yaxis='y2',
                       legendgroup='Proj of next lows',
                       showlegend=False,
                       opacity=1,

@@ -266,7 +266,6 @@ def main():
     lowestBottom0809Date = pd.Timestamp(lowestBottom0809Date.values[0])
     highestTop0809Date = pd.Timestamp(highestTop0809Date.values[0])
 
-    print(lowestBottom0809Date,'\n', highestTop0809Date)
     #endregion
 
 
@@ -573,10 +572,31 @@ def main():
     # composite plot
     hurstDf = pd.DataFrame(data=composite, columns=['point'])
     hurstDf['date'] = pd.to_datetime(hurstX)
+
+    hurstYRange=max(hurstDf.point) - min(hurstDf.point)
+    dfRange = df[df.date==highestTop0809Date].high.values[0] - df[df.date==lowestBottom0809Date].low.values[0]
+
+    hurstBias = hurstYRange/2 + min(hurstDf.point)
+    dfBias = dfRange/2 + df[df.date==lowestBottom0809Date].low.values[0]
+
+
+
+    scaleFactor = hurstYRange/dfRange * 0.8
+
+
+    hurstDf.point -= hurstBias
+    hurstDf.point /= scaleFactor
+    hurstDf.point += dfBias
+
+
+
+
     hurstCompositePlot = Scatter(name='Composite', mode='lines', x=hurstDf.date, y=hurstDf.point,
-                                 line=dict(dash='dash'),
+                                 line=dict(dash='dash',color='grey'),
                                  # yaxis='y2',
                                  hoverinfo='x+name',
+                                 opacity=0.7,
+
                                  )
 
     # hurstTraces += [hurstCompositePlot]
@@ -852,6 +872,7 @@ def main():
         # OHF, OLF,
         # intermediate,
         allBars, tailBars,
+        hurstCompositePlot,
         # major,
         # majorTops, majorBottoms,
 
@@ -915,7 +936,7 @@ def main():
             showgrid=True,
 
         ),
-        showlegend=True,
+        showlegend=False,
         yaxis=dict(range=[min(df.low) * 0.8, max(df.high) * 1.2]),
         # paper_bgcolor=backgroundColor,
         # plot_bgcolor=backgroundColor,
@@ -953,10 +974,10 @@ def main():
     # htmls = [majorTrendHtml] + hurstHtml
 
     plotter(majorFig, 'majorTrend_weeklyFrom2008.html',
+            # hurstCompositeHtml+
             HprojFig+
             # LprojFig+
             majorTrendHtml+
-            hurstCompositeHtml+
             hurstShortHtml+
             hurstLongHtml
             # sunHtml+
@@ -978,6 +999,10 @@ def main():
     endTime = time.time()
     elapsed = endTime - startTime
     print("Operation took a total of %.2f seconds." % (elapsed))
+
+
+    print('Lowest point at:', lowestBottom0809Date)
+    print('Highest point at:',highestTop0809Date)
 
 
     return majorFig

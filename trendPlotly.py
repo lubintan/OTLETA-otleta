@@ -31,13 +31,27 @@ def main():
     # endpoint = df.iloc[-1].date + timedelta(days=(
     #     (df.iloc[-1].date - df.iloc[0].date).days)*0.30)
 
-    endpoint = df.iloc[-1].date + timedelta(weeks=24)
+    todaysDate = df.iloc[-1].date
+
+    endpoint = todaysDate + timedelta(weeks=24)
     
     xaxisRange = [
         df.iloc[0].date,
         # df.iloc[-1].date,
         endpoint
     ]
+
+    showDate = todaysDate - timedelta(days=365)
+
+    showXaxisRange=[showDate,endpoint]
+
+    yMax = max(df[df.date>showDate].high)
+    yMin = min(df[df.date>showDate].low)
+    yRange = yMax - yMin
+    yBuff = yRange * 0.05
+
+    yaxisRange = [yMin-yBuff,  yMax+yBuff]
+
 
     # endpoint = dfTail.iloc[-1].date + timedelta(days=((df.iloc[-1].date - df.iloc[0].date).days) * 0.10)
 
@@ -367,10 +381,7 @@ def main():
     # LprojFig['layout'].update(xaxis=dict(range=xaxisRange), showlegend=False, barmode='stack', title='Projection of next Bottom')
 
 
-    # print(Hproj)
-    # exit()
-    # print(sunHigh,moonHigh)
-    # exit()
+
 
     Hproj.append(sunHigh)
     Hproj.append(moonHigh)
@@ -592,12 +603,20 @@ def main():
 
 
     hurstCompositePlot = Scatter(name='Composite', mode='lines', x=hurstDf.date, y=hurstDf.point,
-                                 line=dict(dash='dash',color='grey'),
+                                 line=dict(dash='dot',color='grey'),
                                  # yaxis='y2',
                                  hoverinfo='x+name',
                                  opacity=0.7,
 
                                  )
+
+    maxHurstComp = max(hurstDf[hurstDf.date>showDate].point)
+    minHurstComp = min(hurstDf[hurstDf.date>showDate].point)
+
+
+    # for graph scaling
+    if (maxHurstComp+yBuff) > yaxisRange[1]: yaxisRange[1] = maxHurstComp + yBuff
+    if (minHurstComp-yBuff) < yaxisRange[0]: yaxisRange[0] = minHurstComp - yBuff
 
     # hurstTraces += [hurstCompositePlot]
 
@@ -741,9 +760,40 @@ def main():
     # retracement clusters
     # retClusters = getClusters(retLevels, df.iloc[-1].date, endpoint)
 
-    clusters = clusterAlgo2(retLevels, df.iloc[-1].close, startX=df.iloc[-2].date, endX=endpoint)
+    clusters, priceLevels = clusterAlgo2(retLevels, df.iloc[-1].close, startX=df.iloc[-2].date, endX=endpoint)
+
+    # for graph scaling
+    maxPrice = max(priceLevels)
+    minPrice = min(priceLevels)
+
+    if (maxPrice+yBuff) > yaxisRange[1]: yaxisRange[1] = maxPrice + yBuff
+    if (minPrice-yBuff) < yaxisRange[0]: yaxisRange[0] = minPrice - yBuff
 
     # endregion
+
+    #region: time levels
+    allDates=()
+    for eachProj in Hproj:
+        allDates = allDates + eachProj.x
+
+    allDates = pd.Series(allDates)
+    allDates = allDates[allDates>todaysDate]
+    allDates = allDates.value_counts()
+
+    percentile = 0.7
+    timeCutoff = int(percentile * max(allDates))
+
+    allDates = allDates[allDates > timeCutoff].index
+
+    verticalPlots = plotVerticalLines(allDates,highPoint=yaxisRange[1],lowPoint=yaxisRange[0])
+
+    #endregion
+
+    #region: diamonds
+    diamondPlot = plotDiamonds(allDates,priceLevels)
+    #endregion
+
+
 
     # region:signal tops
     intSignalTops = signalTops(df, bigTops=bigTopListInt)
@@ -883,8 +933,10 @@ def main():
 
     # for eachRet in retLinesList:
     #     majorData += eachRet
-    #
+    # #
     majorData += clusters
+    majorData += verticalPlots
+    majorData += [diamondPlot]
 
     tops = Scatter(x=df.date, y=df.high, mode='lines')
     bots = Scatter(x=df.date, y=df.low, mode='lines')
@@ -932,12 +984,12 @@ def main():
                 visible=False
 
             ),
-            range=xaxisRange,
+            range=showXaxisRange,
             showgrid=True,
 
         ),
         showlegend=False,
-        yaxis=dict(range=[min(df.low) * 0.8, max(df.high) * 1.2]),
+        yaxis=dict(range=yaxisRange),
         # paper_bgcolor=backgroundColor,
         # plot_bgcolor=backgroundColor,
         # barmode='stack',

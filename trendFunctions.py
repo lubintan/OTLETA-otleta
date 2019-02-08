@@ -9,6 +9,7 @@ from plotly.graph_objs import Layout, Scatter, Line, Ohlc, Figure, Histogram, Ba
 import plotly.figure_factory as ff
 import scipy as sp
 import time
+from sklearn.cluster import AgglomerativeClustering
 
 
 # TODO:
@@ -285,7 +286,6 @@ def clusterAlgo2(levelList, close, startX, endX):
             maxSpace = thisMaxSpacing
 
 
-
     spaceFactor = 2
     minSpace = maxSpace #np.inf
     clusters = []
@@ -391,21 +391,28 @@ def clusterAlgo2(levelList, close, startX, endX):
             belowMin = np.inf
             for eachRange in levelList:
                 for val in eachRange:
-                    belowDist = close - val
-
+                    belowDist = abs(close - val)
+                    # input((belowDist > 0) and (belowDist < belowMin))
                     if (belowDist > 0) and (belowDist < belowMin):
                         finalBelowLevel = val
                         belowMin = belowDist
 
+    allLevels = finalClustersAbove + finalClustersBelow
+
+    # print('below:',finalBelowLevel)
+    # print('above:', finalAboveLevel)
+    # print('clusters below:', finalClustersBelow)
+    # print('clusters above:', finalClustersAbove)
 
     # print(finalAboveLevel,finalBelowLevel,finalClustersAbove, finalClustersBelow)
 
-    clusterColor = 'navy'
-    clusterWidth = 3
-    clusterDash = 'dash'
-    levelColor = 'blue'
-    levelWidth = 2
-    levelDash = 'dash'
+    clusterColor = 'brown'
+    clusterWidth = 3.5
+    clusterDash = 'dot'
+    levelColor = 'brown'
+    levelWidth = 1.5
+    levelDash = 'dot'
+    opacity = 0.1
 
     traces = []
 
@@ -413,7 +420,7 @@ def clusterAlgo2(levelList, close, startX, endX):
         for eachCluster in finalClustersAbove:
             thisLine = Scatter(name='Resistance Cluster', x=[startX, endX], y=[eachCluster, eachCluster],
                                mode='lines+text', #'lines+text'
-                               opacity=0.7,
+                               opacity=opacity,
                                line=dict(color=clusterColor,
                                          width=clusterWidth,  # newClusterDict[eachMain]*2,
                                          dash=clusterDash,
@@ -433,7 +440,7 @@ def clusterAlgo2(levelList, close, startX, endX):
         for eachCluster in finalClustersBelow:
             thisLine = Scatter(name='Support Cluster', x=[startX, endX], y=[eachCluster, eachCluster],
                                mode='lines+text', #'lines+text'
-                               opacity=0.7,
+                               opacity=opacity,
                                line=dict(color=clusterColor,
                                          width=clusterWidth,  # newClusterDict[eachMain]*2,
                                          dash=clusterDash,
@@ -448,11 +455,11 @@ def clusterAlgo2(levelList, close, startX, endX):
                                )
             traces.append(thisLine)
 
-    if finalAboveLevel > 0:
-
+    if finalAboveLevel > 0: #if necessary to have at least 1 line shown above
+        allLevels.append(finalAboveLevel)
         thisLine = Scatter(name='Resistance Rtcmt', x=[startX, endX], y=[finalAboveLevel, finalAboveLevel],
                            mode='lines+text',  # 'lines+text'
-                           opacity=0.7,
+                           opacity=opacity,
                            line=dict(color=levelColor,
                                      width=levelWidth,  # newClusterDict[eachMain]*2,
                                      dash=levelDash,
@@ -467,11 +474,11 @@ def clusterAlgo2(levelList, close, startX, endX):
                            )
         traces.append(thisLine)
 
-    if finalBelowLevel > 0:
-
+    if finalBelowLevel > 0: #if necessary to have at least 1 line shown below
+        allLevels.append(finalBelowLevel)
         thisLine = Scatter(name='Support Rtcmt', x=[startX, endX], y=[finalBelowLevel, finalBelowLevel],
                            mode='lines+text',  # 'lines+text'
-                           opacity=0.7,
+                           opacity=opacity,
                            line=dict(color=levelColor,
                                      width=levelWidth,  # newClusterDict[eachMain]*2,
                                      dash=levelDash,
@@ -486,7 +493,7 @@ def clusterAlgo2(levelList, close, startX, endX):
                            )
         traces.append(thisLine)
 
-    return traces
+    return traces, allLevels
 
 def clusterAlgo(levelList, minClusters=0,):
     # 1. Method: find min spacing
@@ -540,7 +547,7 @@ def clusterAlgo(levelList, minClusters=0,):
                             else:
                                 clusterDict[mainEl] = [subEl]
                                 toRemove.append(subEl)
-
+                    # are the below 2 lines redundant?
                     for removeEl in toRemove:
                         subList.remove(removeEl)
 
@@ -770,6 +777,29 @@ def plotGannAngles(x0_date,x0_idx,xLast_date,xLast_idx,y0, trendUp = False, rati
 
     return line
 
+def plotDiamonds(xVals,yVals):
+    diamonds = []
+    x = []
+    y = []
+    for eachX in xVals:
+        for eachY in yVals:
+            x.append(eachX)
+            y.append(eachY)
+
+    return Scatter(x=x,y=y,mode='markers',marker=dict(color='blue',symbol='diamond'))
+
+
+
+def plotVerticalLines(dates, highPoint, lowPoint):
+
+    linePlots = []
+
+    for eachDate in dates:
+        thisLine = Scatter(x=[eachDate]*2, y=[highPoint, lowPoint], mode='lines', line=dict(color='brown',dash='dot'),opacity=0.1)
+        linePlots.append(thisLine)
+
+    return linePlots
+
 def retracementLines(firstPoint,lastPoint,x, name='Retracement',color='#000080',previousLowProjLevels=[]):
     # lastPoint = lastPoint.values[0]
     # firstPoint = firstPoint.valuesalues[0]
@@ -984,13 +1014,19 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
                 LLdiff.append(diff.days)
 
 
+    # allProjs = []
+
     # Projection of next High
 
     Hproj_bars = []
     ganttList = []
 
+
     for eachProj in HH_projs:
         eachDates = HH_projs[eachProj]
+
+        # for theDate in eachDates:
+        #     if theDate > todaysDate: allProjs.append(theDate)
 
         #Get Latest Projection Date
         latestDate = max([latestDate, max(eachDates)])
@@ -1019,6 +1055,9 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
 
     for eachProj in LH_projs:
         eachDates = LH_projs[eachProj]
+
+        # for theDate in eachDates:
+        #     if theDate > todaysDate: allProjs.append(theDate)
 
         # Get Latest Projection Date
         latestDate = max([latestDate, max(eachDates)])
@@ -1065,6 +1104,9 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
     for eachProj in LL_projs:
         eachDates = LL_projs[eachProj]
 
+        # for theDate in eachDates:
+        #     if theDate > todaysDate: allProjs.append(theDate)
+
         # Get Latest Projection Date
         latestDate = max([latestDate, max(eachDates)])
 
@@ -1092,6 +1134,9 @@ def trendProjector(topsAndBottoms, todaysDate, highColor = 'orange', lowColor = 
 
     for eachProj in HL_projs:
         eachDates = HL_projs[eachProj]
+
+        # for theDate in eachDates:
+        #     if theDate > todaysDate: allProjs.append(theDate)
 
         # Get Latest Projection Date
         latestDate = max([latestDate, max(eachDates)])

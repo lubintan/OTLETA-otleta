@@ -183,18 +183,21 @@ def hurstSines(lowestPoint,df, projLimitDate=None):
     return hurstX, hurstXInt
 
 
-def verticalPlot(mainTrace,others=[], others2=[],others3=[]):
-    numRows = 1
+def verticalPlot(mainTrace,others=[],xaxisRange=[]):
+    numRows = 1 + len(others)
 
     fig = plotly.tools.make_subplots(
-        rows=numRows+1, cols=1, shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.1,row_width=[0.2]*numRows+[0.8])
+        rows=numRows+1, cols=1, shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.1,row_width=[0.4]*numRows+[4])
 
     for eachTrace in mainTrace:
         fig.append_trace(eachTrace,1,1)
 
     # fig.append_trace(anchorPoint, 4, 1)
-    for each in others:
-        fig.append_trace(each, 2, 1)
+    for i in range(len(others)):
+        for each in others[i]:
+            fig.append_trace(each, 1+i+1, 1)
+
+
     #
     # for each in others2:
     #     fig.append_trace(each, 3, 1)
@@ -212,11 +215,15 @@ def verticalPlot(mainTrace,others=[], others2=[],others3=[]):
     #     fig.append_trace(each, 10, 1)
 
 
-    fig['layout'].update(barmode='stack',xaxis=dict(rangeslider=dict(visible=False),showgrid=True),
-    #                      yaxis2 = dict(showticklabels=False,title='Inverse MA'),
-    #                      yaxis3=dict(showticklabels=False,title='240W'),
-    #                      yaxis4=dict(showticklabels=False,title='80W'),
-    #                      yaxis5=dict(showticklabels=False,title='40W'),
+    fig['layout'].update(showlegend=False,
+        barmode='stack',xaxis=dict(range=xaxisRange,rangeslider=dict(visible=False),showgrid=True),
+                         yaxis2 = dict(showticklabels=False,title='Time Projections'),
+                         yaxis3=dict(showticklabels=False,title='Trendline'),
+                         yaxis4=dict(showticklabels=False,title='Short Hurst Cycles'),
+                         yaxis5=dict(showticklabels=False,title='Long Hurst Cycles'),
+                         # paper_bgcolor= 'grey',
+
+
     #                      yaxis6=dict(showticklabels=False,title='20W'),
     #                      yaxis7=dict(showticklabels=False,title='10W'),
     #                      title=title,
@@ -268,7 +275,7 @@ def verticalPlot(mainTrace,others=[], others2=[],others3=[]):
                                     )
 
 
-    plotly.offline.plot(fig)
+    plotly.offline.plot(fig,)
     # plotly.offline.plot(fig,output_type='file',filename=filename)
 
 def clusterAlgo2(levelList, close, startX, endX):
@@ -412,7 +419,7 @@ def clusterAlgo2(levelList, close, startX, endX):
     levelColor = 'brown'
     levelWidth = 1.5
     levelDash = 'dot'
-    opacity = 0.1
+    opacity = 0.3
 
     traces = []
 
@@ -426,7 +433,7 @@ def clusterAlgo2(levelList, close, startX, endX):
                                          dash=clusterDash,
                                          ),
                                # marker=dict(symbol='circle'),
-                               hoverinfo='y',  # 'none'
+                               hoverinfo='none',
                                legendgroup='Resistance Cluster',
                                showlegend=True,
                                textposition='middle right',
@@ -446,7 +453,7 @@ def clusterAlgo2(levelList, close, startX, endX):
                                          dash=clusterDash,
                                          ),
                                # marker=dict(symbol='circle'),
-                               hoverinfo='y',  # 'none'
+                               hoverinfo='none',
                                legendgroup='Support Cluster',
                                showlegend=True,
                                textposition='middle right',
@@ -465,7 +472,7 @@ def clusterAlgo2(levelList, close, startX, endX):
                                      dash=levelDash,
                                      ),
                            # marker=dict(symbol='circle'),
-                           hoverinfo='y',  # 'none'
+                           hoverinfo='none',
                            legendgroup='Resistance Rtcmt',
                            showlegend=True,
                            textposition='middle right',
@@ -484,7 +491,7 @@ def clusterAlgo2(levelList, close, startX, endX):
                                      dash=levelDash,
                                      ),
                            # marker=dict(symbol='circle'),
-                           hoverinfo='y',  # 'none'
+                           hoverinfo='none',
                            legendgroup='Support Rtcmt',
                            showlegend=True,
                            textposition='middle right',
@@ -786,7 +793,7 @@ def plotDiamonds(xVals,yVals):
             x.append(eachX)
             y.append(eachY)
 
-    return Scatter(x=x,y=y,mode='markers',marker=dict(color='blue',symbol='diamond'))
+    return Scatter(name='Hot Spots', x=x,y=y,mode='markers',marker=dict(color='orange',symbol='diamond'),hoverinfo='x+y')
 
 
 
@@ -795,7 +802,7 @@ def plotVerticalLines(dates, highPoint, lowPoint):
     linePlots = []
 
     for eachDate in dates:
-        thisLine = Scatter(x=[eachDate]*2, y=[highPoint, lowPoint], mode='lines', line=dict(color='brown',dash='dot'),opacity=0.1)
+        thisLine = Scatter(x=[eachDate]*2, y=[highPoint, lowPoint], mode='lines', hoverinfo='none',line=dict(color='brown',dash='dot'),opacity=0.3)
         linePlots.append(thisLine)
 
     return linePlots

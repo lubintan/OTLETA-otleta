@@ -602,11 +602,11 @@ def main():
 
 
 
-    hurstCompositePlot = Scatter(name='Composite', mode='lines', x=hurstDf.date, y=hurstDf.point,
+    hurstCompositePlot = Scatter(name='Hurst Composite', mode='lines', x=hurstDf.date, y=hurstDf.point,
                                  line=dict(dash='dot',color='grey'),
                                  # yaxis='y2',
                                  hoverinfo='x+name',
-                                 opacity=0.7,
+                                 opacity=0.6,
 
                                  )
 
@@ -854,7 +854,8 @@ def main():
                    opacity=0.8,
                    line=dict(width=2.5),
                    # hoverinfo='none',
-                   # hoverlabel=dict(namelengthsrc='none'),
+                   hoverlabel=dict(bgcolor='pink'),
+
                    # showlegend=False,
                    # increasing=dict(line=dict(color= '#17BECF')),
                    # decreasing=dict(line=dict(color= '#17BECF')),
@@ -1025,17 +1026,17 @@ def main():
 
     # htmls = [majorTrendHtml] + hurstHtml
 
-    plotter(majorFig, 'majorTrend_weeklyFrom2008.html',
-            # hurstCompositeHtml+
-            HprojFig+
-            # LprojFig+
-            majorTrendHtml+
-            hurstShortHtml+
-            hurstLongHtml
-            # sunHtml+
-            # moonHighHtml+
-            # moonHtml
-            )
+    # plotter(majorFig, 'output.html',
+    #         # hurstCompositeHtml+
+    #         HprojFig+
+    #         # LprojFig+
+    #         majorTrendHtml+
+    #         hurstShortHtml+
+    #         hurstLongHtml
+    #         # sunHtml+
+    #         # moonHighHtml+
+    #         # moonHtml
+    #         )
     #         # [topProjHtml, botProjHtml, HHHtml, LHHtml, LLHtml, HLHtml],
     #         )
 
@@ -1044,9 +1045,14 @@ def main():
     # print(HprojInt)
     # exit()
     #
-    # verticalPlot(mainTrace=majorData,others=hurstTraces)
-    #              # hurst2=hurstProjs[1],hurst3=hurstProjs[2],
-    #              # hurst4=hurstProjs[3],hurst5=hurstProjs[4],)
+    verticalPlot(mainTrace=majorData,others=[
+        Hproj,
+        [major, majorTops, majorBottoms],
+        hurstTracesShort,
+        hurstTracesLong,
+    ],
+                 xaxisRange=showXaxisRange)
+
 
     endTime = time.time()
     elapsed = endTime - startTime

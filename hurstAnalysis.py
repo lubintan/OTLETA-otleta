@@ -95,7 +95,7 @@ def getAvgPeriods(cyclePoints, left, right):
             periods.append(cyclePoints[i+1]-cyclePoints[i])
 
 
-    return '%.2f' %(np.mean(periods))
+    return '%.2f' %(np.mean(periods)), np.mean(periods)
 
 def postDownFiller(longerCycle,shorterCycle,dfLowLp,dfLowLp1Deg,fillDown=[]):
 
@@ -510,6 +510,14 @@ def inverseMa(ma,data):
 
     return Bar(name='inverse MA',x=inverse.index,y=inverse,)
 
+def highestPointFinder1Deg(y):
+    hpMask = (
+        (y.shift(-1) <= y)
+        & (y.shift(1) <= y)
+    )
+
+    return y[hpMask]
+
 def lowestPointFinder1Deg(y):
 
     lpMask = (
@@ -569,7 +577,7 @@ def envelopeFinder(df,ma,allowMargin = 0.1):
         
     return upperband, lowerband
 
-def movingAverage(data, window, win_type=None):
+def movingAverage(data, window, win_type=None,dates=None):
 
     # print(data)
     ma = data.rolling(window=window,center=True,win_type=win_type).mean()
@@ -580,6 +588,9 @@ def movingAverage(data, window, win_type=None):
     ma = pd.DataFrame(ma)
     ma.columns=['movingAverage']
     ma['original'] = data
+    # ma['date'] = dates
+    # print(ma)
+    # exit()
     # ma = ma.dropna()
 
     # print(ma)
@@ -698,6 +709,8 @@ def main(tickerName):
         df['Date'] = df.index
         df = df.asfreq('W-Mon',method='pad')
 
+    mainHurst(df)
+
     # print(df)
 
     # exit()
@@ -725,7 +738,9 @@ def main(tickerName):
     # mask = (df.Date > '1997-12-31') & (df.Date <= '2003-07-07')
     # df = df.loc[mask]
 
-    df.reset_index(drop=True, inplace=True)
+def mainHurst(df):
+    df = df.reset_index(drop=True)
+    df.columns = ['Date', 'Close', 'Open', 'High', 'Low', 'LowFirst']
 
     timeTolerance = 0.4  # 40%
 
@@ -1089,12 +1104,15 @@ def main(tickerName):
     cyclesW20 = removeDuplicates(cyclesW20)
     cyclesW10 = removeDuplicates(cyclesW10)
 
+    avg0, M54Avg = getAvgPeriods(cyclesM54, cyclesM18[0], cyclesM18[-1])
+    avg1, M18Avg = getAvgPeriods(cyclesM18, cyclesM18[0], cyclesM18[-1])
+    avg2, M9Avg = getAvgPeriods(cyclesM9, cyclesM18[0], cyclesM18[-1])
+    avg3, W20Avg = getAvgPeriods(cyclesW20, cyclesM18[0], cyclesM18[-1])
+    avg4, W10Avg = getAvgPeriods(cyclesW10, cyclesM18[0], cyclesM18[-1])
+
+
     avgList = [
-        getAvgPeriods(cyclesM54, cyclesM18[0], cyclesM18[-1]),
-        getAvgPeriods(cyclesM18, cyclesM18[0], cyclesM18[-1]),
-        getAvgPeriods(cyclesM9, cyclesM18[0], cyclesM18[-1]),
-        getAvgPeriods(cyclesW20, cyclesM18[0], cyclesM18[-1]),
-        getAvgPeriods(cyclesW10, cyclesM18[0], cyclesM18[-1]),
+        avg0, avg1, avg2, avg3, avg4
 
     ]
 
@@ -1144,6 +1162,10 @@ def main(tickerName):
     dfLowLp = Scatter(x=dfLowLp.index, y=dfLowLp.point, mode='markers', line=dict(color='purple'),
                          marker=dict(size=7))
 
+    dfLowLp1Deg = Scatter(x=dfLowLp1Deg.index, y=dfLowLp1Deg.point, mode='markers', line=dict(color='orange'),
+                         marker=dict(size=10))
+
+
     trace = [
         boeing,
         # ma0,
@@ -1152,21 +1174,23 @@ def main(tickerName):
         ma1,
         upperband1,
         lowerband1,
-        # ma1Lp,
-        # ma2,
-        # upperband2,
-        # lowerband2,
-        # ma2Lp,
-        #  ma3,
-        # upperband3,
-        # lowerband3,
-        # ma3Lp,
+        ma1Lp,
+        ma2,
+        upperband2,
+        lowerband2,
+        ma2Lp,
+         ma3,
+        upperband3,
+        lowerband3,
+        ma3Lp,
         #      fit,
         # lows,
         # minTrend, intTrend,majTrend,
         # lowerband4,
         # ma4Lp,
-        # dfLowLp,
+
+        dfLowLp1Deg,
+        dfLowLp,
 
     ]
 
@@ -1174,15 +1198,68 @@ def main(tickerName):
     figure = Figure(trace, layout=layout)
 
 
+    # plotly.offline.plot(figure)
 
-
-    plotVerticalSubs('hurst_'+tickerName+'.html',trace, title=tickerName,lastIdx=len(df), avgList = avgList, others=[inverse,M54, M18, M9, W20, W10],anchorPoint=anchorPoint)
+    # plotVerticalSubs('hurst_'+tickerName+'.html',trace, title=tickerName,lastIdx=len(df), avgList = avgList, others=[inverse,M54, M18, M9, W20, W10],anchorPoint=anchorPoint)
 
     # print(perhapsM54)
     # print(perhapsM18)
     # print(perhapsM9)
     # print(perhapsW20)
     # print(perhapsW10)
+
+
+    #get projected dates
+    M54LastDate = df.iloc[cyclesM54[-1]].Date
+    M18LastDate= df.iloc[cyclesM18[-1]].Date
+    M9LastDate = df.iloc[cyclesM9[-1]].Date
+    W20LastDate = df.iloc[cyclesW20[-1]].Date
+    W10LastDate = df.iloc[cyclesW10[-1]].Date
+
+    M54projs = []
+    M18projs = []
+    M9projs = []
+    W20projs = []
+    W10projs = []
+
+    M54projs.append(M54LastDate+timedelta(weeks=M54Avg))
+
+    M18projs.append(M18LastDate + timedelta(weeks=M18Avg))
+    for i in range(30):
+        nextDate = M18projs[-1] + timedelta(weeks=M18Avg)
+
+        if nextDate <= M54projs[-1]:
+            M18projs.append(nextDate)
+        else:
+            break
+
+    M9projs.append(M9LastDate + timedelta(weeks=M9Avg))
+    for i in range(30):
+        nextDate = M9projs[-1] + timedelta(weeks=M9Avg)
+
+        if nextDate <= M54projs[-1]:
+            M9projs.append(nextDate)
+        else:
+            break
+
+    W20projs.append(W20LastDate + timedelta(weeks=W20Avg))
+    for i in range(30):
+        nextDate = W20projs[-1] + timedelta(weeks=W20Avg)
+
+        if nextDate <= M54projs[-1]:
+            W20projs.append(nextDate)
+        else:
+            break
+
+    W10projs.append(W10LastDate + timedelta(weeks=W10Avg))
+    for i in range(30):
+        nextDate = W10projs[-1] + timedelta(weeks=W10Avg)
+
+        if nextDate <= M54projs[-1]:
+            W10projs.append(nextDate)
+        else:
+            break
+
 
 
 
@@ -1193,35 +1270,37 @@ def main(tickerName):
     print('Expected:',W20_weeks, 'IRL:', avgList[3])
     print('Expected:',W10_weeks, 'IRL:', avgList[4])
 
+    return [M54projs,M18projs,M9projs,W20projs,W10projs]
+
 if __name__ == '__main__':
 
     start = time.time()
 
-    tickerList = ['BA','EURUSD',
-        '^GSPC','^DJI','^IXIC','^NYA','^XAX','^BUK100P','^RUT','^VIX',
-                  # '^FTSE',
-                  '^GDAXI','^FCHI',
-                  # '^STOXX50E', #######
-                  '^N100','^BFX',
-                  # 'IMOEX.ME',
-                  '^N225',
-        # '^HSI',
-        '000001.SS',
-        # '^STI',
-                  '^AXJO','^AORD','^BSESN','^JKSE',
-        # '^KLSE',
-        '^NZ50','^KS11','^TWII','^GSPTSE','^BVSP',
-        # '^MXX ',
-                  '^IPSA','^MERV','^TA125.TA',
-        # '^CASE30',
-    '^JN0U.JO']
+    # tickerList = ['BA','EURUSD',
+    #     '^GSPC','^DJI','^IXIC','^NYA','^XAX','^BUK100P','^RUT','^VIX',
+    #               # '^FTSE',
+    #               '^GDAXI','^FCHI',
+    #               # '^STOXX50E', #######
+    #               '^N100','^BFX',
+    #               # 'IMOEX.ME',
+    #               '^N225',
+    #     # '^HSI',
+    #     '000001.SS',
+    #     # '^STI',
+    #               '^AXJO','^AORD','^BSESN','^JKSE',
+    #     # '^KLSE',
+    #     '^NZ50','^KS11','^TWII','^GSPTSE','^BVSP',
+    #     # '^MXX ',
+    #               '^IPSA','^MERV','^TA125.TA',
+    #     # '^CASE30',
+    # '^JN0U.JO']
 
     # tickerList = ['^NYA','^XAX','^BUK100P','^RUT','^GDAXI','^FCHI']
 
     # tickerList = ['BA']
     # tickerList = ['^NYA']
     # tickerList = ['^IPSA']
-    # tickerList = ['EURUSD']
+    tickerList = ['EURUSD']
 
     for each in tickerList:
         print()

@@ -82,7 +82,7 @@ def getScore(point, otherPoints, buffer, ma):
 
 
 def getAvgPeriods(cyclePoints, left, right):
-    if len(cyclePoints) < 2: return 'Not Applicable'
+    if len(cyclePoints) < 2: return 'NA', -1
 
     cyclePoints = set(cyclePoints)
     cyclePoints = list(cyclePoints)
@@ -1103,6 +1103,9 @@ def mainHurst(df, tickerName=''):
     cyclesM9 = removeDuplicates(cyclesM9)
     cyclesW20 = removeDuplicates(cyclesW20)
     cyclesW10 = removeDuplicates(cyclesW10)
+
+
+
 
     avg0, M54Avg = getAvgPeriods(cyclesM54, cyclesM18[0], cyclesM18[-1])
     avg1, M18Avg = getAvgPeriods(cyclesM18, cyclesM18[0], cyclesM18[-1])
